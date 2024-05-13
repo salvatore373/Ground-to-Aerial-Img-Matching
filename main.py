@@ -8,6 +8,34 @@ import torch
 from transformation import Transformation
 from model.vgg import VGG16
 
+def correlation(device):
+    H = 3
+    Ws = 5
+    Wv = 3
+    C = 2
+
+    Fs1 = np.random.rand(H, Ws, C)
+    Fg1 = np.random.rand(H, Wv, C)
+
+    Fs2 = np.random.rand(H, Ws, C)
+    Fg2 = np.random.rand(H, Wv, C)
+
+    Fs3 = np.random.rand(H, Ws, C)
+    Fg3 = np.random.rand(H, Wv, C)
+
+    Fs4 = np.random.rand(H, Ws, C)
+    Fg4 = np.random.rand(H, Wv, C)
+
+    pairs = [(Fs1, Fg1), (Fs2, Fg2), (Fs3, Fg3), (Fs4, Fg4)]
+
+    t = Transformation('correlation')
+    img_correlation = t.correlation(Fs1, Fg1)
+    print("Correlation Scores: ", img_correlation)
+
+    orientation, similiraty = t.generate_similarity_matrix(pairs)
+    print("Similarity Scores: ", similiraty)
+    print("Orientation: ", orientation)
+
 def polar(device):
     #load the image
     img = plt.imread('sat_img.png')
@@ -40,6 +68,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     polar(device)
+    correlation(device)
     vgg_test(device)
 
 if __name__ == '__main__':
