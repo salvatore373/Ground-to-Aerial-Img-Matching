@@ -16,9 +16,6 @@ class CrossViewDataset(Dataset):
         self.pairs = pd.read_csv(csv_path, header=None)
         self.pairs.replace({1: {'streetview': 'polarmap/normal'}, 2: {'input': '', 'png': 'jpg'}}, regex=True, inplace=True)
 
-        # TODO. convert to polarmap/normal (or segmap replacing input with output), bingmap, streetview
-        # TODO remove input from streetview,
-
         if base_path[-1] == '/':
             base_path = base_path[:-1]
         self.pairs = self.pairs.map(lambda el: f'{base_path}/{el}')

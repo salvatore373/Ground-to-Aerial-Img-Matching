@@ -10,7 +10,7 @@ class VGG16(nn.Module):
     "VERY DEEP CONVOLUTIONAL NETWORKS FOR LARGE-SCALE IMAGE RECOGNITION".
     """
 
-    def __init__(self, num_classes: int,
+    def __init__(self, num_classes: int = None,
                  include_classifier_part: bool = True,
                  device: torch.device = None):
         """
@@ -18,6 +18,7 @@ class VGG16(nn.Module):
         The model input size is 3x224x224.
 
         :param num_classes: The number of possible classes (the dimension of the output layer)
+        :param include_classifier_part: Whether the model should contain the final MLP for classification.
         """
         super(VGG16, self).__init__()
 

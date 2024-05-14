@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from model.data import CrossViewDataset
+from model.trainer import Trainer
 from transformation import Transformation
 from model.vgg import VGG16
 
@@ -109,12 +110,26 @@ def load_data(device):
 
     plt.show()
 
+def train(device):
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
+    valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
+
+    batch_size = 64
+    epochs = 2
+
+    train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device)
+    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device)
+    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
+
+    # Trainer()
 
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    load_data(device)
+
+    # load_data(device)
     # polar(device)
     # correlation(device)
     # vgg_test(device)
