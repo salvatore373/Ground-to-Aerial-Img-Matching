@@ -14,9 +14,14 @@ class _ConcatPadLayer(nn.Module):
         self.n = n
 
     def forward(self, x):
-        out = torch.cat((x[:, :, -self.n:, :], x, x[:, :, :self.n, :]), dim=2)
-        out = F.pad(out, (self.n, self.n, 0, 0))
-        return out
+        if len(x.size()) == 4:
+            out = torch.cat((x[:, :, -self.n:, :], x, x[:, :, :self.n, :]), dim=2)
+            out = F.pad(out, (self.n, self.n, 0, 0))
+            return out
+        if len(x.size()) == 3:
+            out = torch.cat((x[:, -self.n:, :], x, x[:, :self.n, :]), dim=1)
+            out = F.pad(out, (self.n, self.n, 0, 0))
+            return out
 
 
 class VGG16(nn.Module):

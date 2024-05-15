@@ -64,12 +64,15 @@ def polar(device):
 
 
 def vgg_test(device):
-    inp = torch.randn((3, 224, 224)).to(device)
+    # inp = torch.randn((3, 224, 224)).to(device)
+    inp = torch.randn((1, 3, 128, 512)).to(device)
 
-    model = VGG16(3, include_classifier_part=False, device=device)
+    model = VGG16(3, include_classifier_part=False, circular=True, device=device)
     model.load_imagenet_weights_feature_extr()
 
     r = model(inp)
+    r2 = model(inp)
+    q = torch.cat((r, r2), dim=0 if len(r.size()) == 3 else 1)
     print(r.size())
 
 
@@ -113,6 +116,7 @@ def load_data(device):
 
     plt.show()
 
+
 def train(device):
     dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
     trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
@@ -128,17 +132,18 @@ def train(device):
 
     # Trainer()
 
+
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    #load_data(device)
+    # load_data(device)
     # polar(device)
     # correlation(device)
-    # vgg_test(device)
+    vgg_test(device)
 
-    segmentation.segmentation(device)
-    segmentation2.segmentation(device)
+    # segmentation.segmentation(device)
+    # segmentation2.segmentation(device)
 
 
 if __name__ == '__main__':
