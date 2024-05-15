@@ -23,43 +23,43 @@ class VGG16(nn.Module):
         super(VGG16, self).__init__()
 
         self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1, device=device),
+            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding='same', device=device),
             # nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         self.layer2 = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1, device=device),
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding='same', device=device),
             # nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         self.layer3 = nn.Sequential(
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, device=device),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding='same', device=device),
             # nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         self.layer4 = nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1, device=device),
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding='same', device=device),
             # nn.BatchNorm2d(512),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
 
         self.layer5 = nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1, device=device),
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1, device=device),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding='same', device=device),
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding='same', device=device),
             # nn.BatchNorm2d(512),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2)
