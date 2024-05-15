@@ -4,7 +4,7 @@ class Transformation:
     def __init__(self, name, aerial_size = 0, height = 0, width = 0):
         """
 
-        :param name: ????? TODO
+        :param name: name of the transformation for more clarity in the main.py
         :param aerial_size: Size of the aerial image
         :param height: Height of the polar transformed aerial image
         :param width: Width of the polar transformed aerial image
