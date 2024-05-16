@@ -80,7 +80,11 @@ def polar(device):
     # load a polarized image for check the dimension.
     img2 = plt.imread('data/CVUSA_subset/polarmap/normal/input0000008.png')
 
-    aerial_size = img.shape[0]
+    # Permute the dimension of the image
+    img = np.transpose(img, (2, 0, 1))
+    img2 = np.transpose(img2, (2, 0, 1))
+
+    aerial_size = img.shape[1]
     height = 128
     width = 512
     # img = np.random.rand(100, 100)
@@ -96,11 +100,11 @@ def polar(device):
     # show the two images
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
-    axes[0].imshow(img_polar.permute(1, 2, 0))
+    axes[0].imshow(img_polar.permute(1, 2, 0)) 
     axes[0].set_title('My polar image')
     axes[0].axis('off')
 
-    axes[1].imshow(img2)
+    axes[1].imshow(np.transpose(img2, (1, 2, 0)))
     axes[1].set_title('Original polar image')
     axes[1].axis('off') 
 
@@ -108,7 +112,6 @@ def polar(device):
     plt.show()
 
     return img_polar
-
 
 def vgg_test(device):
     # inp = torch.randn((3, 224, 224)).to(device)
