@@ -26,10 +26,13 @@ class CrossViewDataset(Dataset):
         return len(self.pairs)
 
     def __getitem__(self, idx):
+        # reference https://github.com/pro1944191/SemanticAlignNet/blob/7438b28a78acc821109e08cfa024c52e6143d38f/SAN/polar_input_data_orien_FOV_3_Segmap_Concatenation.py#L82
         row = self.pairs.iloc[idx, :]
-        bingmap = vision.io.read_image(row[0])
-        polarmap = vision.io.read_image(row[1])
-        streetview = vision.io.read_image(row[2])
+        bingmap = vision.io.read_image(row[0]).div(255)
+        polarmap = vision.io.read_image(row[1]).div(255)
+        streetview = vision.io.read_image(row[2]).div(255)
+
+        # TODO: normalize imgs
 
         return polarmap, bingmap, streetview
 
