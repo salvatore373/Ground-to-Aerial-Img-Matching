@@ -41,13 +41,18 @@ class Transformation:
         Compute the polar transformation of an aerial image.
         
         Args:
-        - img: aerial image with dimensions (H, W, C)
+        - img: aerial image with dimensions (C, H, W)
         
         Returns:
         - Polar image with transformed dimensions
         """
-        img_width = img.shape[1]
-        img_height = img.shape[0]
+        if type(img) == torch.Tensor:
+            img = img.permute(1, 2, 0).numpy()
+        else:
+            img = np.transpose(img, (1, 2, 0))
+            
+        img_width = img.shape[0]
+        img_height = img.shape[1]
 
         i = np.arange(0, self.height)
         j = np.arange(0, self.width)
