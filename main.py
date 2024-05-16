@@ -228,6 +228,8 @@ def main():
 
     # load_data(device)
     # polar(device)
+    img_polar2 = polar_tensor(device)
+    print("Shape of the polarized image: ", img_polar2.shape)
     # correlation(device)
     vgg_test(device)
     #image_segmentation(device)
