@@ -84,6 +84,7 @@ class Transformation:
 
         # Convert the polar image to a tensor
         img_xy_tensor = torch.tensor(img_xy, dtype=torch.float32)
+        img_xy_tensor = img_xy_tensor.permute(2, 0, 1)
 
         return img_xy_tensor
 
