@@ -45,11 +45,42 @@ def correlation(device):
     print("Orientation: ", orientation)
 
 
+def image_segmentation(device):
+    # load the non-segmented image
+    img = plt.imread('data/CVUSA_subset/bingmap/input0000008.png')
+
+    # load the segmented image
+    seg_img = plt.imread('data\CVUSA_subset\segmap\output0000008.png')
+
+    seg_img1 = segmentation.segmentation(device, img)
+    seg_img2 = segmentation2.segmentation(device, img)
+
+    # show the three images
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    axes[0].imshow(seg_img)
+    axes[0].set_title('The original segmented image')
+    axes[0].axis('off')
+
+    axes[1].imshow(seg_img1)
+    axes[1].set_title('First segmentation model')
+    axes[1].axis('off')
+
+    axes[2].imshow(seg_img2)
+    axes[2].set_title('Second segmentation model')
+    axes[2].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 def polar(device):
     # load the image
-    img = plt.imread('sat_img.png')
+    img = plt.imread('data/CVUSA_subset/bingmap/input0000008.png')
 
-    aerial_size = 1200
+    # load a polarized image for check the dimension.
+    img2 = plt.imread('data/CVUSA_subset/polarmap/normal/input0000008.png')
+
+    aerial_size = img.shape[0]
     height = 128
     width = 512
     # img = np.random.rand(100, 100)
@@ -58,8 +89,24 @@ def polar(device):
     img_polar = t.polar(img)
     print(f"Shape of the original image: {img.shape} and shape of the polar image: {img_polar.shape}")
 
-    plt.imshow(img_polar)
+    #plt.imshow(img_polar)
+    #plt.show()
+    print(f"Shape of the polarized image for comparison: {img2.shape}")
+
+    # show the two images
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    axes[0].imshow(img_polar)
+    axes[0].set_title('My polar image')
+    axes[0].axis('off')
+
+    axes[1].imshow(img2)
+    axes[1].set_title('Original polar image')
+    axes[1].axis('off') 
+
+    plt.tight_layout()
     plt.show()
+
     return img_polar
 
 
@@ -141,9 +188,7 @@ def main():
     # polar(device)
     # correlation(device)
     vgg_test(device)
-
-    # segmentation.segmentation(device)
-    # segmentation2.segmentation(device)
+    #image_segmentation(device)
 
 
 if __name__ == '__main__':
