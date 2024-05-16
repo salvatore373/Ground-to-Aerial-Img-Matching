@@ -1,7 +1,8 @@
 import numpy as np
 
+
 class Transformation:
-    def __init__(self, name, aerial_size = 0, height = 0, width = 0):
+    def __init__(self, name, aerial_size=0, height=0, width=0):
         """
 
         :param name: name of the transformation for more clarity in the main.py
@@ -16,12 +17,11 @@ class Transformation:
 
     def sample(self, img, x, y, bounds):
         x0, x1, y0, y1 = bounds
-        x = np.clip(x, x0, x1-1)
-        y = np.clip(y, y0, y1-1)
+        x = np.clip(x, x0, x1 - 1)
+        y = np.clip(y, y0, y1 - 1)
         return img[y, x]
 
-
-    def polar(self, img):
+    def polar(self, img):  # TODO: support input and output Tensor type
         """
         Compute the polar transformation of an aerial image.
         
@@ -37,10 +37,12 @@ class Transformation:
         i = np.arange(0, self.height)
         j = np.arange(0, self.width)
 
-        jj, ii = np.meshgrid(j, i) # meshgrid
+        jj, ii = np.meshgrid(j, i)  # meshgrid
 
-        y = self.aerial_size/2. - self.aerial_size/2./self.height*(self.height-1-ii)*np.sin(2*np.pi*jj/self.width)
-        x = self.aerial_size/2. + self.aerial_size/2./self.height*(self.height-1-ii)*np.cos(2*np.pi*jj/self.width)
+        y = self.aerial_size / 2. - self.aerial_size / 2. / self.height * (self.height - 1 - ii) * np.sin(
+            2 * np.pi * jj / self.width)
+        x = self.aerial_size / 2. + self.aerial_size / 2. / self.height * (self.height - 1 - ii) * np.cos(
+            2 * np.pi * jj / self.width)
 
         # Apply bilinear interpolation
         y0 = np.floor(y).astype(int)
@@ -58,15 +60,15 @@ class Transformation:
 
         na = np.newaxis
 
-        #linear interpolation in x direction
-        img_x0 = (x1-x)[...,na]*img_00 + (x-x0)[...,na]*img_10
-        img_x1 = (x1-x)[...,na]*img_01 + (x-x0)[...,na]*img_11
+        # linear interpolation in x direction
+        img_x0 = (x1 - x)[..., na] * img_00 + (x - x0)[..., na] * img_10
+        img_x1 = (x1 - x)[..., na] * img_01 + (x - x0)[..., na] * img_11
 
-        #linear interpolation in y direction
-        img_xy = (y1-y)[...,na]*img_x0 + (y-y0)[...,na]*img_x1
+        # linear interpolation in y direction
+        img_xy = (y1 - y)[..., na] * img_x0 + (y - y0)[..., na] * img_x1
 
         return img_xy
-    
+
     def correlation(self, Fs, Fg):
         """
         Compute the correlation between two feature maps Fs and Fg.
@@ -79,10 +81,10 @@ class Transformation:
         - Correlation scores with dimensions (Ws,)
         """
 
-        H, Ws, C = Fs.shape
+        H, Ws, C = Fs.shape  # TODO: not channel_first
         _, Wv, _ = Fg.shape
         correlation_scores = np.zeros(Ws)
-        
+
         for i in range(Ws):
             correlation_score = 0
             for c in range(C):
@@ -90,9 +92,9 @@ class Transformation:
                     for w in range(Wv):
                         correlation_score += Fs[h, (i + w) % Ws, c] * Fg[h, w, c]
             correlation_scores[i] = correlation_score
-        
+
         return correlation_scores
-    
+
     def estimate_orientation(self, correlation_scores):
         """
         Estimates the orientation between ground and aerial images based on correlation scores.
@@ -127,9 +129,9 @@ class Transformation:
         similarity_scores = [scores for scores, _ in scores_orientation]
         orientation = [orientation for _, orientation in scores_orientation]
         similarity_matrix = np.array(similarity_scores)
-        
+
         return orientation, similarity_matrix
-    
+
     def shift_crop(self, Fs, similarity_matrix, shift_amount):
         """
         Shifts and crops the aerial feature maps based on the similarity matrix to align them with the ground image.
@@ -145,17 +147,14 @@ class Transformation:
 
         # Calculate the mean similarity for each column of the similarity matrix
         mean_similarity = np.mean(similarity_matrix, axis=0)
-        
+
         # Apply a weighted shift based on the mean similarity
         weighted_shift_amount = shift_amount * mean_similarity
-        
+
         # Apply the shift to the aerial feature maps
         shifted_Fs = np.roll(Fs, weighted_shift_amount, axis=1)  # Shift along the width dimension
-        
+
         # Crop the aerial feature maps to match the size of the ground image
         cropped_Fs = shifted_Fs[:, :Fs.shape[1] - weighted_shift_amount, :]  # Crop the shifted feature maps
-        
+
         return cropped_Fs
-
-
-
