@@ -84,7 +84,7 @@ def polar(device):
     img = np.transpose(img, (2, 0, 1))
     img2 = np.transpose(img2, (2, 0, 1))
 
-    aerial_size = img.shape[1]
+    aerial_size = 370
     height = 128
     width = 512
     # img = np.random.rand(100, 100)
@@ -105,6 +105,45 @@ def polar(device):
     axes[0].axis('off')
 
     axes[1].imshow(np.transpose(img2, (1, 2, 0)))
+    axes[1].set_title('Original polar image')
+    axes[1].axis('off') 
+
+    plt.tight_layout()
+    plt.show()
+
+    return img_polar
+
+
+def polar_tensor(device):
+    # load the image
+    img = plt.imread('data/CVUSA_subset/bingmap/input0000008.png')
+
+    # load a polarized image for check the dimension.
+    img2 = plt.imread('data/CVUSA_subset/polarmap/normal/input0000008.png')
+
+    img_tensor = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1)
+    img2_tensor = torch.tensor(img2, dtype=torch.float32).permute(2, 0, 1)
+
+    aerial_size = 370
+    height = 128
+    width = 512
+
+    t = Transformation('polar', aerial_size, height, width)
+    img_polar = t.polar(img_tensor)
+    print(f"Shape of the original image: {img2_tensor.shape} and shape of the polar image: {img_polar.shape}")
+
+    #plt.imshow(img_polar)
+    #plt.show()
+    print(f"Shape of the polarized image for comparison: {img2_tensor.shape}")
+
+    # show the two images
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    axes[0].imshow(img_polar.permute(1, 2, 0)) 
+    axes[0].set_title('My polar image')
+    axes[0].axis('off')
+
+    axes[1].imshow(img2_tensor.permute(1, 2, 0))
     axes[1].set_title('Original polar image')
     axes[1].axis('off') 
 
