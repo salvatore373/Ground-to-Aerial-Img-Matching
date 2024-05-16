@@ -115,12 +115,13 @@ class VGG16(nn.Module):
         else:
             self.layer5 = nn.Sequential(
                 nn.Conv2d(in_channels=512, out_channels=256, kernel_size=3, padding=(1, 1), stride=(2, 1),
-                          device=device),
+                          device=device),  # 256, 8, 64
                 nn.ReLU(),
                 nn.Conv2d(in_channels=256, out_channels=64, kernel_size=3, padding=(1, 1), stride=(2, 1),
-                          device=device),
+                          device=device),  # 64, 4, 64
                 nn.ReLU(),
-                nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3, padding='same', stride=1, device=device),
+                nn.Conv2d(in_channels=64, out_channels=16, kernel_size=3, padding='same', stride=1,
+                          device=device),  # 16, 4, 64
                 nn.ReLU(),
             )
 
