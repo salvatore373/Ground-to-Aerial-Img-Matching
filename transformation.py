@@ -136,29 +136,6 @@ class Transformation:
         dynamic_shape = list(x.shape)
         return [s if s is not None else d for s, d in zip(static_shape, dynamic_shape[:rank])]
 
-    def generate_similarity_matrix(self, image_pairs):
-        """
-        Generates a similarity matrix between compared images.
-        
-        Args:
-        - image_pairs: List of image pairs (matching or non-matching)
-        
-        Returns:
-        - Similarity matrix between the compared images
-        """
-        scores_orientation = []
-        for pair in image_pairs:
-            Fs, Fg = pair
-            correlation_scores = self.correlation(Fs, Fg)
-            estimated_orientation = self.estimate_orientation(correlation_scores)
-            scores_orientation.append((correlation_scores, estimated_orientation))
-
-        similarity_scores = [scores for scores, _ in scores_orientation]
-        orientation = [orientation for _, orientation in scores_orientation]
-        similarity_matrix = np.array(similarity_scores)
-
-        return orientation, similarity_matrix
-
     def shift_crop(self, Fs, orientation, Wg):
         """
         Shifts and crops the aerial feature maps based on the similarity matrix to align them with the ground image.
