@@ -96,7 +96,7 @@ def polar(device):
     # show the two images
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
-    axes[0].imshow(img_polar)
+    axes[0].imshow(img_polar.permute(1, 2, 0))
     axes[0].set_title('My polar image')
     axes[0].axis('off')
 
