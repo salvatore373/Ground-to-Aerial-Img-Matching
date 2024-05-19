@@ -93,112 +93,122 @@ class Transformation:
 
         return img_xy_tensor
 
-    def correlation(self, Fs, Fg):
-        """
-        Compute the correlation between two feature maps Fs and Fg.
+    def corr(self, sat_matrix, grd_matrix):
+        # matrix shape
         
-        Args:
-        - Fs: batch of aerial feature maps with dimensions (batch_size, C, H, Ws)
-        - Fg: batch of ground feature maps with dimensions (batch_size, C, H, Wv)
+        s_n, s_c, s_h, s_w = sat_matrix.shape
+        g_n, g_c, g_h, g_w = grd_matrix.shape
+
+        print(f"Shape of satellite matrix: {sat_matrix.shape}, Shape of ground matrix: {grd_matrix.shape}")
         
-        Returns:
-        - Correlation scores with dimensions (batch_size, Ws, batch_size)
-        - Orientation indices with maximum correlation with dimensions (batch_size, batch_size)
-        """
-        batch_size_s, Cs, Hs, Ws = Fs.shape
-        batch_size_g, Cg, Hg, Wv = Fg.shape
-
-        assert Hs == Hg and Cs == Cg, "Fs and Fg must have the same height and number of channels"
-
-        # Warp and pad columns of Fs
-        n = Wv - 1
-        Fs_padded = torch.cat([Fs, Fs[:, :, :, :n]], dim=3)  # Shape: (batch_size_s, C, H, Ws + n)
+        assert s_h == g_h and s_c == g_c, "Le matrici devono avere la stessa altezza e lo stesso numero di canali"
         
-        # Perform convolution (correlation)
-        Fg_transposed = Fg.permute(1, 2, 3, 0)  # Shape: (C, H, Wv, batch_size_g)
-        out = F.conv2d(Fs_padded, Fg_transposed, stride=1, padding=0)  # Shape: (batch_size_s, batch_size_g, 1, Ws)
-
-        assert out.shape[2] == 1 and out.shape[3] == Ws, "Output shape is incorrect"
+        def warp_pad_columns(x, n):
+            return torch.cat([x, x[:, :, :, :n]], dim=3)
         
-        # Remove the height dimension (squeeze)
-        out = out.squeeze(2)  # Shape: (batch_size_s, batch_size_g, Ws)
-        out = out.permute(0, 2, 1)  # Shape: (batch_size_s, Ws, batch_size_g)
+        n = g_w - 1
+        x = warp_pad_columns(sat_matrix, n) # shape: [batch_size_sat, channels, height, width + n]
+        print("Padded satellite matrix: ", x.shape)
+
+        # Correlation
+        f = grd_matrix.permute(1, 2, 3, 0)  # Shape: (C, H, W, batch_size_grd)
+        f = f.contiguous().view(g_c, g_h, g_w, -1) 
+        f = f.permute(3, 0, 1, 2)  # Shape: (batch_size_grd, C, H, W)
+        print("Filter matrix: ", f.shape)
         
-        # Convert to numpy array
-        correlation_scores = out.detach().cpu().numpy()  # Shape: (batch_size_s, Ws, batch_size_g)
-
-        # Calculate the orientation with the maximum correlation
-        orientation_indices = np.argmax(correlation_scores, axis=1)  # Shape: (batch_size_s, batch_size_g)
-
-        orientation_indices_tensor = torch.tensor(orientation_indices)
-
-        # Cast the indices to int32
-        orientation_indices_int32 = orientation_indices_tensor.to(dtype=torch.int32)
+        # Convolution
+        out = F.conv2d(x, f, stride=1, padding=0)  # Shape: (batch_size_sat, batch_size_grd, 1, w)
+        print(f"Convolution output: {out.shape}")
         
-        return correlation_scores, orientation_indices_int32
+        out = out.view(s_n, g_n, 1, s_w)  # Reshape
+        h, w = out.shape[2:]
+        print("Reshaped output: ", out.shape)
+
+        assert h == 1 and w == s_w, "L'altezza del risultato deve essere 1 e la larghezza deve corrispondere a quella di sat_matrix"
+        
+        out = out.squeeze(2)  # Shape: (batch_size_sat, batch_size_grd, w)
+        print("Squeezed output: ", out.shape)
+        out = out.permute(0, 2, 1)  # Shape: (batch_size_sat, w, batch_size_grd)
+        print("Permutated output: ", out.shape)
+
+
+        # Orientation
+        orien = torch.argmax(out, dim=1)  # Shape: (batch_size_sat, batch_size_grd)
+        
+        return out, orien.to(dtype=torch.int32)
     
-    def torch_shape(x, rank):
+    def torch_shape(self, x, rank):
         static_shape = list(x.size())
         dynamic_shape = list(x.shape)
         return [s if s is not None else d for s, d in zip(static_shape, dynamic_shape[:rank])]
 
-    def shift_crop(self, Fs, orientation, Wg):
+    def crop_sat(self, sat_matrix, orien, grd_width):
         """
-        Shifts and crops the aerial feature maps based on the similarity matrix to align them with the ground image.
-        
+        Shifts and crops the satellite feature maps based on the orientation to align them with the ground image.
+
         Args:
-        - Fs: Aerial feature maps
-        - similarity_matrix: Similarity matrix between the compared images
-        - shift_amount: Amount of shift in pixels
-        
+        - sat_matrix: Satellite feature maps (batch_sat, channels, height, width)
+        - orien: Orientation indices (batch_sat, batch_grd)
+        - grd_width: Width of the ground image
+
         Returns:
-        - Shifted and cropped aerial feature maps
+        - Cropped satellite feature maps aligned with the ground image
         """
+        batch_sat, batch_grd = orien.shape  # Assume orien is of shape (batch_sat, batch_grd)
+        _, channels, height, width = sat_matrix.shape
 
+        # Add a dimension and repeat the satellite matrix
+        sat_matrix = sat_matrix.unsqueeze(1)  # shape: [batch_sat, 1, channels, height, width]
+        sat_matrix = sat_matrix.repeat(1, batch_grd, 1, 1, 1)  # shape: [batch_sat, batch_grd, channels, height, width]
 
-        batchS, batchG = self.torch_shape(orientation, 2) # batch dimensions
+        # Permute the satellite matrix to get the desired shape
+        sat_matrix = sat_matrix.permute(0, 1, 4, 3, 2)  # shape: [batch_sat, batch_grd, width, height, channels]
 
-        batch_size_s, Cs, Hs, Ws = Fs.shape
+        orien = orien.unsqueeze(-1)  # shape: [batch_sat, batch_grd, 1]
 
-        Fs = torch.unsqueeze(Fs, 1)  # Add a dimension, shape: (batchS, 1, Cs, Hs, Ws)
-
-        # Tile and permute
-        Fs = Fs.repeat(1, batchG, 1, 1, 1)
-        Fs = Fs.permute(0, 1, 2, 4, 3)  # shape = [batchS, batchG, Cs, Ws, Hs]
-
-        orientation = torch.unsqueeze(orientation, -1) # Add a dimension, shape: (batchS, batchG, 1)
-
-        i = torch.arange(batchS)
-        j = torch.arange(batchG)
-        k = torch.arange(Ws)
+        i = torch.arange(batch_sat, device=sat_matrix.device)
+        j = torch.arange(batch_grd, device=sat_matrix.device)
+        k = torch.arange(width, device=sat_matrix.device)
 
         # Create meshgrid
-        x, y, z = torch.meshgrid(i, j, k)
-        z_index = torch.fmod(z + orientation, Ws)  # Compute the module element-wise
+        x, y, z = torch.meshgrid(i, j, k, indexing='ij')
+        z_index = (z + orien) % width
 
-        x1 = x.view(-1)
-        y1 = y.view(-1)
-        z1 = z_index.view(-1)
+        x1 = x.reshape(-1)
+        y1 = y.reshape(-1)
+        z1 = z_index.reshape(-1)
         index = torch.stack([x1, y1, z1], dim=1)
 
-        extracted_values = torch.gather(Fs, 1, index.unsqueeze(-1).expand(-1, -1, -1, -1, Fs.size(-1)))
-        sat = extracted_values.view(batchS, batchG, Cs, Ws, Hs)
-        index1 = torch.arange(Wg)
+        # Use advanced indexing to extract the values
+        sat_matrix = sat_matrix.permute(0, 1, 4, 3, 2)  # shape: [batch_sat, batch_grd, channels, height, width]
+        sat_matrix_flat = sat_matrix.reshape(-1, height, channels)  # Flatten the first three dimensions
+        index_flat = (x1 * batch_grd * width + y1 * width + z1).long()
+        sat = sat_matrix_flat[index_flat]  # shape: [batch_sat * batch_grd * width, height, channels]
+        sat = sat.reshape(batch_sat, batch_grd, width, height, channels)
 
-        sat_transposed = sat.permute(4, 1, 0, 3, 2)  # shape: [Ws, batch_sat, batch_grd, h, channel]
-        extracted_values = torch.gather(sat_transposed, 0, index1.unsqueeze(-1).expand(-1, -1, -1, -1, -1))
-        sat_crop_matrix = extracted_values.permute(1, 2, 4, 3, 0)  # shape: [batch_sat, batch_grd, channel, h, Wg]
+        # Extract and transpose the values
+        index1 = torch.arange(grd_width, device=sat_matrix.device)
+        sat_transposed = sat.permute(2, 0, 1, 3, 4)  # shape: [width, batch_sat, batch_grd, height, channels]
+        sat_crop_matrix = sat_transposed[index1]  # shape: [grd_width, batch_sat, batch_grd, height, channels]
+        sat_crop_matrix = sat_crop_matrix.permute(1, 2, 3, 0, 4)  # shape: [batch_sat, batch_grd, height, grd_width, channels]
 
-        assert sat_crop_matrix.shape[3] == Wg, "The width of the cropped aerial image is incorrect"
+        assert sat_crop_matrix.shape[3] == grd_width, "The width of the cropped aerial image is incorrect"
 
         return sat_crop_matrix
     
     def corr_crop_distance(self, Fs, Fg):
-        corr_out, corr_orien = self.correlation(Fs, Fg)
-        sat_cropped = self.shift_crop(Fs, corr_orien, Fg.shape[3])
+        corr_out, corr_orien = self.corr(Fs, Fg)
+        sat_cropped = self.crop_sat(Fs, corr_orien, Fg.shape[3])
+        print("Satellite cropped: ", sat_cropped.shape)
+
+        #permute channels
+        sat_cropped = sat_cropped.permute(0, 1, 4, 2, 3)
+        print("Satellite cropped and permuted: ", sat_cropped.shape)
         # shape = [batch_sat, batch_grd, channel, h, grd_width]
 
         sat_matrix = F.normalize(sat_cropped, p=2, dim=(2, 3, 4))
         distance = 2 - 2 * torch.sum(sat_matrix * Fg.unsqueeze(0), dim=(2, 3, 4)).T # shape = [batch_grd, batch_sat]
+
+        print(f"Satellite matrix: {sat_matrix.shape}, Distance: {distance.shape}, Correlation orientation: {corr_orien.shape}")
 
         return sat_matrix, distance, corr_orien
