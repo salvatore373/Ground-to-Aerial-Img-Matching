@@ -1,28 +1,30 @@
-from transformers import SegformerFeatureExtractor, SegformerForSemanticSegmentation
 import torch
 from PIL import Image
 import matplotlib.pyplot as plt
+from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 
-def segmentation(device, img):
+
+def segmentation(path_img):
+    # Carica il processore dell'immagine
+    processor = AutoImageProcessor.from_pretrained("ratnaonline1/segFormer-b4-city-satellite-segmentation-1024x1024")
+
+    # Carica il modello preaddestrato
     model = SegformerForSemanticSegmentation.from_pretrained("ratnaonline1/segFormer-b4-city-satellite-segmentation-1024x1024")
-    feature_extractor = SegformerFeatureExtractor.from_pretrained("ratnaonline1/segFormer-b4-city-satellite-segmentation-1024x1024")
 
-    inputs = feature_extractor(images=img, return_tensors="pt")
+    # Carica un'immagine satellitare da segmentare"
+    input_image = Image.open(path_img)
+
+    # Preprocessa l'immagine
+    input_image = processor(input_image, return_tensors="pt")
+
+    # Esegui la segmentazione
     with torch.no_grad():
-        outputs = model(**inputs)
-        logits = outputs.logits
+        output = model(**input_image)
 
-    predicted = torch.argmax(logits, dim=1)
-    predicted = predicted.squeeze().cpu().numpy()   
+    # Ottieni la segmentazione dall'output
+    predicted_mask = output.logits.argmax(1).squeeze().cpu().numpy()
 
-    return predicted
-
-def main():
-    # Device configuration
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    segmentation(device)
-
-
-if __name__ == '__main__':
-    main()
+    # Visualizza l'immagine segmentata
+    plt.imshow(predicted_mask)
+    plt.axis('off')
+    plt.show()
