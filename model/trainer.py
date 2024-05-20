@@ -1,5 +1,7 @@
+from typing import Type
+
 import torch
-from torch import nn
+from torch import nn, optim
 from torch.optim import AdamW
 from transformers import get_scheduler
 from tqdm.auto import tqdm
@@ -298,10 +300,12 @@ class Trainer:
     def train(self,
               train_dataloader: DataLoader,
               valid_dataloader: DataLoader,
-              optimizer: torch.optim.Optimizer,
-              loss_function,
+              loss_function: callable,
+              optimizer: Type[optim.Optimizer] = optim.Adam,
               epochs: int = 1,
-              early_stopping_patience: int = 10):
+              early_stopping_patience: int = 10,
+              learning_rate: float = 0.001,
+              weight_decay: float = 0.01):
 
         # Early-stopping params
         patience = early_stopping_patience
@@ -309,6 +313,7 @@ class Trainer:
         min_val_loss = float('inf')
 
         # progress_bar = tqdm(range(1, epochs + 1))
+        optimizer = optimizer(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         for epoch in range(1, epochs + 1):
             print('\033[92m' + ' Epoch {:2d}'.format(epoch) + '\033[0m')
 
@@ -317,14 +322,14 @@ class Trainer:
 
             self.model.train()
             # for batch in train_dataloader:
-            for step, (sequence_lengths, inputs, labels) in enumerate(train_dataloader):
+            for step, (polarmap_batch, bingmap_batch, streetview_batch) in enumerate(train_dataloader):
                 optimizer.zero_grad()
 
                 # pred = self.model(**batch)
-                pred = self.model((sequence_lengths, inputs))
+                pred = self.model(polarmap_batch, bingmap_batch, streetview_batch)
 
                 # loss = pred.loss
-                loss = loss_function(pred, labels)
+                loss = loss_function(pred)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item()
@@ -339,9 +344,9 @@ class Trainer:
             # Validation
             self.model.eval()
             with torch.no_grad():
-                for sequence_lengths, inputs, labels in valid_dataloader:
-                    pred = self.model((sequence_lengths, inputs))
-                    loss = loss_function(pred, labels)
+                for polarmap_batch, bingmap_batch, streetview_batch in valid_dataloader:
+                    pred = self.model(polarmap_batch, bingmap_batch, streetview_batch)
+                    loss = loss_function(pred)
                     valid_loss += loss.item()
             valid_loss /= len(valid_dataloader)
             print('\t[E: {:2d}] valid loss = {:0.4f}'.format(epoch, valid_loss))
