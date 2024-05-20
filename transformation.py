@@ -93,7 +93,7 @@ class Transformation:
 
         return img_xy_tensor
 
-    def correlation(self, sat_matrix, grd_matrix):
+    def corr(self, sat_matrix, grd_matrix):
         # matrix shape
         
         s_n, s_c, s_h, s_w = sat_matrix.shape
@@ -194,16 +194,16 @@ class Transformation:
 
         assert sat_crop_matrix.shape[3] == grd_width, "The width of the cropped aerial image is incorrect"
 
+        # Permute shape to [batch_sat, batch_grd, channels, height, grd_width]
+        sat_crop_matrix = sat_crop_matrix.permute(0, 1, 4, 2, 3)
+
         return sat_crop_matrix
     
     def corr_crop_distance(self, Fs, Fg):
-        corr_out, corr_orien = self.correlation(Fs, Fg)
+        corr_out, corr_orien = self.corr(Fs, Fg)
+        print("Fs: ", Fs.shape, "Fg: ", Fg.shape, "Correlation output: ", corr_out.shape, "Correlation orientation: ", corr_orien.shape)
         sat_cropped = self.crop_sat(Fs, corr_orien, Fg.shape[3])
         print("Satellite cropped: ", sat_cropped.shape)
-
-        #permute channels
-        sat_cropped = sat_cropped.permute(0, 1, 4, 2, 3)
-        print("Satellite cropped and permuted: ", sat_cropped.shape)
         # shape = [batch_sat, batch_grd, channel, h, grd_width]
 
         sat_matrix = F.normalize(sat_cropped, p=2, dim=(2, 3, 4))
