@@ -93,7 +93,7 @@ class Transformation:
 
         return img_xy_tensor
 
-    def corr(self, sat_matrix, grd_matrix):
+    def correlation(self, sat_matrix, grd_matrix):
         # matrix shape
         
         s_n, s_c, s_h, s_w = sat_matrix.shape
@@ -200,7 +200,7 @@ class Transformation:
         return sat_crop_matrix
     
     def corr_crop_distance(self, Fs, Fg):
-        corr_out, corr_orien = self.corr(Fs, Fg)
+        corr_out, corr_orien = self.correlation(Fs, Fg)
         print("Fs: ", Fs.shape, "Fg: ", Fg.shape, "Correlation output: ", corr_out.shape, "Correlation orientation: ", corr_orien.shape)
         sat_cropped = self.crop_sat(Fs, corr_orien, Fg.shape[3])
         print("Satellite cropped: ", sat_cropped.shape)

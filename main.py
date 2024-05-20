@@ -183,9 +183,9 @@ def load_data(device):
 
 
 def train(device):
-    dataset_path = "data"
-    trainCSV = "data/CVUSA_subset/train-19zl.csv"
-    valCSV = "data/CVUSA_subset/val-19zl.csv"
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
+    valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
 
     batch_size = 4
     epochs = 2
@@ -201,7 +201,7 @@ def train(device):
     # plt.imshow(np.transpose(segimgs, (1, 2, 0)))
     # plt.show()
     san_model = SAN(input_is_transformed=False)
-    # san_model(streetview, bingmap, segimgs)
+    # san_model(streetview.unsqueeze(dim=0), bingmap.unsqueeze(dim=0), segimgs.unsqueeze(dim=0))
 
     trainer = Trainer(san_model)
     trainer.train(training_dataloader,
@@ -222,8 +222,8 @@ def main():
     # polar(device)
     # correlation(device)
     # vgg_test(device)
-    image_segmentation(device)
-    # train(device)
+    # image_segmentation(device)
+    train(device)
 
 
 if __name__ == '__main__':
