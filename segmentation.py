@@ -22,9 +22,4 @@ def segmentation(path_img):
         output = model(**input_image)
 
     # Ottieni la segmentazione dall'output
-    predicted_mask = output.logits.argmax(1).squeeze().cpu().numpy()
-
-    # Visualizza l'immagine segmentata
-    plt.imshow(predicted_mask)
-    plt.axis('off')
-    plt.show()
+    return output.logits.argmax(1).squeeze().cpu().numpy()
