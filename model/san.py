@@ -141,7 +141,7 @@ class SAN(nn.Module):
             satellite_view = torch.stack([self.img_processor.polar(img) for img in satellite_view.unbind(0)])
             satellite_segmented = torch.stack([self.img_processor.polar(img) for img in satellite_segmented.unbind(0)])
 
-        # DEBUG
+        # todo: keep?
         ground_view = torchvision.transforms.Resize((128, 512))(ground_view)
         satellite_view = torchvision.transforms.Resize((128, 512))(satellite_view)
         satellite_segmented = torchvision.transforms.Resize((128, 512))(satellite_segmented)
@@ -155,19 +155,9 @@ class SAN(nn.Module):
         # Concatenate their results
         concat = torch.cat((vgg_sat_out, vgg_sat_segm_out), dim=0 if len(vgg_sat_out.size()) == 3 else 1)
 
-        # DEBUG
-        import tensorflow as tf
-        tf1 = tf.convert_to_tensor(vgg_ground_out.detach().numpy())
-        tf2 = tf.convert_to_tensor(concat.detach().numpy())
-        tf1 = tf.transpose(tf1, perm=[0, 2, 3, 1])
-        tf2 = tf.transpose(tf2, perm=[0, 2, 3, 1])
-        correlation_res_tf = self.tf_correl(tf1, tf2)
-
-        correlation_out, correlation_orient = self.img_processor.correlation(vgg_ground_out,
-                                                                             concat)  # reference https://github.com/pro1944191/SemanticAlignNet/blob/7438b28a78acc821109e08cfa024c52e6143d38f/SAN/cir_net_FOV_mb.py#L48
+        correlation_out, correlation_orient = self.img_processor.correlation(vgg_ground_out, concat)
         cropped_sat = self.img_processor.crop_sat(concat, correlation_orient, vgg_ground_out.size()[-1])
         sat_mat = nn.functional.normalize(cropped_sat, p=2, dim=(2, 3, 4))
         distance = 2 - 2 * (torch.sum(sat_mat * vgg_ground_out.unsqueeze(dim=0), dim=(2, 3, 4))).T
-        # return sat_matrix, distance, corr_orien  # shapes: (10,10,4,64,16), (10,10), (10,10)
 
         return distance

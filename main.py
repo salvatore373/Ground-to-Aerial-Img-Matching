@@ -1,16 +1,23 @@
+import os
+from pathlib import Path
+
 import pandas as pd
 import torch
 import torchvision
+from PIL import Image
 from tensorflow.python.keras.layers import Conv2D
 from torch import optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 import torchvision as vision
+from torchvision.datasets import ImageFolder
 from torchvision.models import VGG16_Weights
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+from torchvision import transforms
+from tqdm import tqdm
 
-from model.data import CrossViewDataset
+from model.data import CrossViewDataset, ImageTypes
 from model.san import SAN
 from model.trainer import Trainer
 from transformation import Transformation
@@ -142,44 +149,22 @@ def vgg_test(device):
 
 
 def load_data(device):
-    dataset_path = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset"
-    trainCSV = "data/CVUSA_subset/train-19zl.csv"
-    valCSV = "data/CVUSA_subset/val-19zl.csv"
-
-    # id_list = []
-    # id_idx_list = []
-    # with open(trainCSV, 'r') as file:
-    #     idx = 0
-    #     for line in file:
-    #         data = line.split(',')
-    #         pano_id = (data[0].split('/')[-1]).split('.')[0]
-    #         # satellite filename, streetview filename, pano_id
-    #         id_list.append([data[0].replace('bing', 'polar').replace('jpg', 'png'), data[0], data[1], pano_id])
-    #         # polarmap, bingmap, streetview, id (inputXXX)
-    #         id_idx_list.append(idx)
-    #         idx += 1
-
-    # methods return  batch_sat_polar, batch_sat, batch_grd, batch_segmap, batch_orien
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
+    valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
 
     train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device)
-    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device)
 
-    batch_size = 128
-    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
-    # test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    #  Display some samples
-    num_samples = 2
-    fig, axs = plt.subplots(num_samples, 3)
-    for i in range(num_samples):
+    i = 0
+    while input('Press enter to display an image: ') != ' ':
+        fig, axs = plt.subplots(1, 3)
         img1, img2, img3 = train_dataset.__getitem__(i)
         img1, img2, img3 = np.transpose(img1, (1, 2, 0)), np.transpose(img2, (1, 2, 0)), np.transpose(img3, (1, 2, 0)),
-        axs[i][0].imshow(img1)
-        axs[i][1].imshow(img2)
-        axs[i][2].imshow(img3)
-
-    plt.show()
+        axs[0].imshow(img1)
+        axs[1].imshow(img2)
+        axs[2].imshow(img3)
+        plt.show()
+        i += 1
 
 
 def train(device):
@@ -212,6 +197,87 @@ def train(device):
                   learning_rate=10e-5, weight_decay=0.01)
 
 
+def compute_polar_imgs(device):
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    train_csv = f"{dataset_path}/train-19zl.csv"
+    valid_csv = f"{dataset_path}/val-19zl.csv"
+
+    output_dir_seg = f"{dataset_path}my_segsat_polar"
+    output_dir_sat = f"{dataset_path}my_sat_polar"
+    Path(output_dir_seg).mkdir(parents=False, exist_ok=True)
+    Path(output_dir_sat).mkdir(parents=False, exist_ok=True)
+
+    train_dataset = CrossViewDataset(train_csv, base_path=dataset_path, device=device, use_our_data=True,
+                                     dataset_content=[ImageTypes.Sat, ImageTypes.SegmentedSat, ImageTypes.Ground])
+    validation_dataset = CrossViewDataset(valid_csv, base_path=dataset_path, device=device, use_our_data=True,
+                                          dataset_content=[ImageTypes.Sat, ImageTypes.SegmentedSat, ImageTypes.Ground])
+    joint_dataset = ConcatDataset([train_dataset, validation_dataset])
+
+    aerial_size = 370
+    height = 128
+    width = 512
+    t = Transformation('polar', aerial_size, height, width)
+
+    for sat, segm_sat, _, sat_id, segm_sat_id, _ in tqdm(joint_dataset):
+        sat_polar = t.polar(sat)
+        segm_polar = t.polar(segm_sat)
+        torchvision.utils.save_image(sat_polar, f'{output_dir_seg}/{sat_id}.png')
+        torchvision.utils.save_image(segm_polar, f'{output_dir_sat}/{sat_id}.png')
+
+    # Load all images
+    sat_pol_filenames = [f for f in os.listdir(output_dir_sat) if f.endswith('.png') and not f.startswith('._')]
+    seg_pol_filenames = [f for f in os.listdir(output_dir_seg) if f.endswith('.png') and not f.startswith('._')]
+    all_sat_tensor = torch.zeros((len(sat_pol_filenames), 3, height, width))
+    all_seg_tensor = torch.zeros((len(seg_pol_filenames), 3, height, width))
+    for ind, filename in enumerate(sat_pol_filenames):
+        img = torchvision.io.read_image(f'{output_dir_sat}/{filename}')
+        all_sat_tensor[ind] = img
+    for ind, filename in enumerate(seg_pol_filenames):
+        img = torchvision.io.read_image(f'{output_dir_seg}/{filename}')
+        all_seg_tensor[ind] = img
+    # Compute mean and std dev
+    mean_sat = all_sat_tensor.mean(dim=(0, 2, 3))
+    mean_seg = all_seg_tensor.mean(dim=(0, 2, 3))
+    std_sat = all_sat_tensor.std(dim=(0, 2, 3))
+    std_seg = all_seg_tensor.std(dim=(0, 2, 3))
+    print('sat polar mean:', mean_sat)
+    print('seg polar mean:', mean_seg)
+    print('sat polar std:', std_sat)
+    print('seg polar std:', std_seg)
+
+
+def compute_segm_imgs(device):
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    train_csv = f"{dataset_path}/train-19zl.csv"
+    valid_csv = f"{dataset_path}/val-19zl.csv"
+
+    output_dir = f"{dataset_path}my_segsat"
+    Path(output_dir).mkdir(parents=False, exist_ok=True)
+
+    train_dataset = CrossViewDataset(train_csv, base_path=dataset_path, device=device,
+                                     dataset_content=[ImageTypes.Sat, ImageTypes.SegmentedSat, ImageTypes.Ground])
+    validation_dataset = CrossViewDataset(valid_csv, base_path=dataset_path, device=device,
+                                          dataset_content=[ImageTypes.Sat, ImageTypes.SegmentedSat, ImageTypes.Ground])
+    joint_dataset = ConcatDataset([train_dataset, validation_dataset])
+
+    for sat, _, _, sat_id, _, _ in tqdm(joint_dataset):
+        sat_channel_last = torch.permute(sat, dims=(2, 1, 0))
+        segm_img = segmentation.segmentation(img=sat_channel_last)
+        plt.imsave(f'{output_dir}/{sat_id}.png', segm_img)
+
+    # Load all images
+    saved_imgs_filenames = [f for f in os.listdir(output_dir) if f.endswith('.png') and not f.startswith('._')]
+    all_images_tensor = torch.zeros((len(saved_imgs_filenames), 4, 128, 128))
+    for ind, filename in enumerate(saved_imgs_filenames):
+        img = torchvision.io.read_image(f'{output_dir}/{filename}')
+        all_images_tensor[ind] = img
+    # Compute mean and std dev
+    mean = all_images_tensor.mean(dim=(0, 2, 3))
+    std = all_images_tensor.std(dim=(0, 2, 3))
+    print('segm mean:', mean)
+    print('segm std:', std)
+
+
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -223,7 +289,9 @@ def main():
     # correlation(device)
     # vgg_test(device)
     # image_segmentation(device)
-    train(device)
+    # train(device)
+    compute_segm_imgs(device)
+    # compute_polar_imgs(device)
 
 
 if __name__ == '__main__':
