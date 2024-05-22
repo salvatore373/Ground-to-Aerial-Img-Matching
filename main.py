@@ -175,19 +175,16 @@ def train(device):
     batch_size = 4
     epochs = 2
 
-    train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device)
-    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device)
+    train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+                                     dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
+                                                      ImageTypes.Ground])
+    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+                                          dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
+                                                           ImageTypes.Ground])
     training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
 
-    polarmap, bingmap, streetview = train_dataset[0]
-    segimgs = vision.io.read_image(  # TODO: replace
-        "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/segmap/output0044192.png")
-    # plt.imshow(np.transpose(segimgs, (1, 2, 0)))
-    # plt.show()
-    san_model = SAN(input_is_transformed=False)
-    # san_model(streetview.unsqueeze(dim=0), bingmap.unsqueeze(dim=0), segimgs.unsqueeze(dim=0))
-
+    san_model = SAN(input_is_transformed=True)
     trainer = Trainer(san_model)
     trainer.train(training_dataloader,
                   validation_dataloader,
@@ -220,8 +217,8 @@ def comp_mean_std_dev(path_to_dir, channels=3, width=128, height=128):
         img = torchvision.io.read_image(f'{path_to_dir}/{filename}')
         curr_mean = img.mean(dim=(1, 2), dtype=torch.float32)
 
-        runn_mean = runn_mean.add((curr_mean-runn_mean).div(n))
-        M2 = M2.add((curr_mean-prev_runn_mean)*(curr_mean-runn_mean))
+        runn_mean = runn_mean.add((curr_mean - runn_mean).div(n))
+        M2 = M2.add((curr_mean - prev_runn_mean) * (curr_mean - runn_mean))
 
         prev_runn_mean = runn_mean
 
@@ -241,9 +238,9 @@ def compute_polar_imgs(device):
     Path(output_dir_seg).mkdir(parents=False, exist_ok=True)
     Path(output_dir_sat).mkdir(parents=False, exist_ok=True)
 
-    train_dataset = CrossViewDataset(train_csv, base_path=dataset_path, device=device, use_our_data=True,
+    train_dataset = CrossViewDataset(train_csv, base_path=dataset_path, device=device,
                                      dataset_content=[ImageTypes.Sat, ImageTypes.SegmentedSat, ImageTypes.Ground])
-    validation_dataset = CrossViewDataset(valid_csv, base_path=dataset_path, device=device, use_our_data=True,
+    validation_dataset = CrossViewDataset(valid_csv, base_path=dataset_path, device=device,
                                           dataset_content=[ImageTypes.Sat, ImageTypes.SegmentedSat, ImageTypes.Ground])
     joint_dataset = ConcatDataset([train_dataset, validation_dataset])
 
@@ -280,7 +277,6 @@ def compute_polar_imgs(device):
     print('seg polar mean:', mean_seg)
     print('sat polar std:', std_sat)
     print('seg polar std:', std_seg)
-
 
 
 def compute_segm_imgs(device):
@@ -329,9 +325,10 @@ def main():
     # correlation(device)
     # vgg_test(device)
     # image_segmentation(device)
-    # train(device)
-    compute_segm_imgs(device)
-    compute_polar_imgs(device)
+
+    train(device)
+    # compute_segm_imgs(device)
+    # compute_polar_imgs(device)
 
 
 if __name__ == '__main__':
