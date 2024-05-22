@@ -197,6 +197,40 @@ def train(device):
                   learning_rate=10e-5, weight_decay=0.01)
 
 
+def comp_mean_std_dev(path_to_dir, channels=3, width=128, height=128):
+    saved_imgs_filenames = [f for f in os.listdir(path_to_dir) if f.endswith('.png') and not f.startswith('._')]
+    n = len(saved_imgs_filenames)
+    # S1 = torch.zeros(channels)
+    # S2 = torch.zeros(channels)
+    # for ind, filename in enumerate(saved_imgs_filenames):
+    #     img = torchvision.io.read_image(f'{path_to_dir}/{filename}')
+    #     curr_mean = img.mean(dim=(1, 2), dtype=torch.float32)
+    #
+    #     S1 = S1.add(curr_mean)
+    #     S2 = S2.add(curr_mean.pow(2))
+    #     break
+    # # Compute mean and std dev
+    # mean = S1.div(n)
+    # std = torch.sqrt(S2.div(n) - mean.pow(2))
+
+    runn_mean = torch.zeros(channels)
+    M2 = torch.zeros(channels)
+    prev_runn_mean = torch.zeros(channels)
+    for ind, filename in enumerate(saved_imgs_filenames):
+        img = torchvision.io.read_image(f'{path_to_dir}/{filename}')
+        curr_mean = img.mean(dim=(1, 2), dtype=torch.float32)
+
+        runn_mean = runn_mean.add((curr_mean-runn_mean).div(n))
+        M2 = M2.add((curr_mean-prev_runn_mean)*(curr_mean-runn_mean))
+
+        prev_runn_mean = runn_mean
+
+    # Compute mean and std dev
+    mean = runn_mean
+    std = M2.div(n)
+    return mean, std
+
+
 def compute_polar_imgs(device):
     dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
     train_csv = f"{dataset_path}/train-19zl.csv"
@@ -225,25 +259,28 @@ def compute_polar_imgs(device):
         torchvision.utils.save_image(segm_polar, f'{output_dir_sat}/{sat_id}.png')
 
     # Load all images
-    sat_pol_filenames = [f for f in os.listdir(output_dir_sat) if f.endswith('.png') and not f.startswith('._')]
-    seg_pol_filenames = [f for f in os.listdir(output_dir_seg) if f.endswith('.png') and not f.startswith('._')]
-    all_sat_tensor = torch.zeros((len(sat_pol_filenames), 3, height, width))
-    all_seg_tensor = torch.zeros((len(seg_pol_filenames), 3, height, width))
-    for ind, filename in enumerate(sat_pol_filenames):
-        img = torchvision.io.read_image(f'{output_dir_sat}/{filename}')
-        all_sat_tensor[ind] = img
-    for ind, filename in enumerate(seg_pol_filenames):
-        img = torchvision.io.read_image(f'{output_dir_seg}/{filename}')
-        all_seg_tensor[ind] = img
-    # Compute mean and std dev
-    mean_sat = all_sat_tensor.mean(dim=(0, 2, 3))
-    mean_seg = all_seg_tensor.mean(dim=(0, 2, 3))
-    std_sat = all_sat_tensor.std(dim=(0, 2, 3))
-    std_seg = all_seg_tensor.std(dim=(0, 2, 3))
+    # sat_pol_filenames = [f for f in os.listdir(output_dir_sat) if f.endswith('.png') and not f.startswith('._')]
+    # seg_pol_filenames = [f for f in os.listdir(output_dir_seg) if f.endswith('.png') and not f.startswith('._')]
+    # all_sat_tensor = torch.zeros((len(sat_pol_filenames), 3, height, width))
+    # all_seg_tensor = torch.zeros((len(seg_pol_filenames), 3, height, width))
+    # for ind, filename in enumerate(sat_pol_filenames):
+    #     img = torchvision.io.read_image(f'{output_dir_sat}/{filename}')
+    #     all_sat_tensor[ind] = img
+    # for ind, filename in enumerate(seg_pol_filenames):
+    #     img = torchvision.io.read_image(f'{output_dir_seg}/{filename}')
+    #     all_seg_tensor[ind] = img
+    # # Compute mean and std dev
+    # mean_sat = all_sat_tensor.mean(dim=(0, 2, 3))
+    # mean_seg = all_seg_tensor.mean(dim=(0, 2, 3))
+    # std_sat = all_sat_tensor.std(dim=(0, 2, 3))
+    # std_seg = all_seg_tensor.std(dim=(0, 2, 3))
+    mean_sat, std_sat = comp_mean_std_dev(output_dir_sat, 3, width, height)
+    mean_seg, std_seg = comp_mean_std_dev(output_dir_seg, 3, width, height)
     print('sat polar mean:', mean_sat)
     print('seg polar mean:', mean_seg)
     print('sat polar std:', std_sat)
     print('seg polar std:', std_seg)
+
 
 
 def compute_segm_imgs(device):
@@ -264,16 +301,20 @@ def compute_segm_imgs(device):
         sat_channel_last = torch.permute(sat, dims=(2, 1, 0))
         segm_img = segmentation.segmentation(img=sat_channel_last)
         plt.imsave(f'{output_dir}/{sat_id}.png', segm_img)
+        break
 
     # Load all images
-    saved_imgs_filenames = [f for f in os.listdir(output_dir) if f.endswith('.png') and not f.startswith('._')]
-    all_images_tensor = torch.zeros((len(saved_imgs_filenames), 4, 128, 128))
-    for ind, filename in enumerate(saved_imgs_filenames):
-        img = torchvision.io.read_image(f'{output_dir}/{filename}')
-        all_images_tensor[ind] = img
-    # Compute mean and std dev
-    mean = all_images_tensor.mean(dim=(0, 2, 3))
-    std = all_images_tensor.std(dim=(0, 2, 3))
+    # saved_imgs_filenames = [f for f in os.listdir(output_dir) if f.endswith('.png') and not f.startswith('._')]
+    # all_images_tensor = torch.zeros((len(saved_imgs_filenames), 4, 128, 128))
+    # for ind, filename in enumerate(saved_imgs_filenames):
+    #     img = torchvision.io.read_image(f'{output_dir}/{filename}')
+    #     all_images_tensor[ind] = img
+    # # Compute mean and std dev
+    # mean = all_images_tensor.mean(dim=(0, 2, 3))
+    # std = all_images_tensor.std(dim=(0, 2, 3))
+    # print('segm mean:', mean)
+    # print('segm std:', std)
+    mean, std = comp_mean_std_dev(output_dir, 4)
     print('segm mean:', mean)
     print('segm std:', std)
 
