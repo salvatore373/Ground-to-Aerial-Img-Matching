@@ -46,10 +46,14 @@ class CrossViewDataset(Dataset):
         self.sat_std = torch.Tensor([[0.21, 0.24, 0.20]]).view(3, 1, 1)
         self.sat_polar_mean = torch.Tensor([[0.40, 0.36, 0.41]]).view(3, 1, 1)
         self.sat_polar_std = torch.Tensor([[0.15, 0.15, 0.14]]).view(3, 1, 1)
+        self.my_sat_polar_mean = torch.Tensor([[161.1773, 161.1886, 161.1790]]).view(3, 1, 1)
+        self.my_sat_polar_std = torch.Tensor([[28104.8008, 28108.5625, 28105.4355]]).view(3, 1, 1)
         self.seg_mean = torch.Tensor([[0.33, 0.85, 0.8]]).view(3, 1, 1)
         self.seg_std = torch.Tensor([[0.38, 0.27, 0.28]]).view(3, 1, 1)
-        self.seg_polar_mean = torch.Tensor([[0.33, 0.85, 0.8]]).view(3, 1, 1)
-        self.seg_polar_std = torch.Tensor([[0.38, 0.27, 0.28]]).view(3, 1, 1)
+        self.my_seg_mean = torch.Tensor([[44.7254, 6.8859, 53.6650, 161.1959]]).view(4, 1, 1)
+        self.my_seg_std = torch.Tensor([[2185.3887, 228.0155, 3125.1995, 28111.3359]]).view(4, 1, 1)
+        self.seg_polar_mean = torch.Tensor([[59.0299, 131.7719, 141.1782]]).view(3, 1, 1)
+        self.seg_polar_std = torch.Tensor([[7464.6562, 21814.2695, 23127.3535]]).view(3, 1, 1)
 
         match_folder_regex = r'^.+(?=\/)'
         replace_dict = {}
@@ -58,7 +62,7 @@ class CrossViewDataset(Dataset):
             curr_cont = {}
             if img_type == ImageTypes.PolarSat:
                 curr_cont[match_folder_regex] = 'my_sat_polar' if use_our_data else 'polarmap/normal'
-                self.normal_params_per_col.append((self.sat_polar_mean, self.sat_polar_std))
+                self.normal_params_per_col.append((self.my_sat_polar_mean, self.my_sat_polar_std) if use_our_data else (self.sat_polar_mean, self.sat_polar_std))
             elif img_type == ImageTypes.Sat:
                 curr_cont[match_folder_regex] = 'bingmap'
                 self.normal_params_per_col.append((self.sat_mean, self.sat_std))
@@ -68,11 +72,14 @@ class CrossViewDataset(Dataset):
                 curr_cont['png'] = 'jpg'
                 self.normal_params_per_col.append((self.ground_mean, self.ground_std))
             elif img_type == ImageTypes.SegmentedSat:
-                curr_cont[match_folder_regex] = 'my_segsat' if use_our_data else 'segmap'
+                # curr_cont[match_folder_regex] = 'my_segsat' if use_our_data else 'segmap'
+                # curr_cont['input'] = 'output'
+                # self.normal_params_per_col.append(
+                #     (self.my_seg_mean, self.my_seg_std) if use_our_data else (self.seg_mean, self.seg_std))
+                curr_cont[match_folder_regex] = 'segmap'
                 curr_cont['input'] = 'output'
                 self.normal_params_per_col.append((self.seg_mean, self.seg_std))
             elif img_type == ImageTypes.PolarSegmentedSat:
-                assert use_our_data, "No polarize segmented satellite data available in the official repo."
                 curr_cont[match_folder_regex] = 'my_segsat_polar'
                 curr_cont['input'] = 'output'
                 self.normal_params_per_col.append((self.seg_polar_mean, self.seg_polar_std))
