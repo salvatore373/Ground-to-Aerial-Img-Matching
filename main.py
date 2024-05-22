@@ -255,8 +255,8 @@ def compute_polar_imgs(device):
     for sat, segm_sat, _, sat_id, segm_sat_id, _ in tqdm(joint_dataset):
         sat_polar = t.polar(sat)
         segm_polar = t.polar(segm_sat)
-        torchvision.utils.save_image(sat_polar, f'{output_dir_seg}/{sat_id}.png')
-        torchvision.utils.save_image(segm_polar, f'{output_dir_sat}/{sat_id}.png')
+        torchvision.utils.save_image(sat_polar, f'{output_dir_sat}/{sat_id}.png')
+        torchvision.utils.save_image(segm_polar, f'{output_dir_seg}/{segm_sat_id}.png')
 
     # Load all images
     # sat_pol_filenames = [f for f in os.listdir(output_dir_sat) if f.endswith('.png') and not f.startswith('._')]
@@ -301,7 +301,6 @@ def compute_segm_imgs(device):
         sat_channel_last = torch.permute(sat, dims=(2, 1, 0))
         segm_img = segmentation.segmentation(img=sat_channel_last)
         plt.imsave(f'{output_dir}/{sat_id}.png', segm_img)
-        break
 
     # Load all images
     # saved_imgs_filenames = [f for f in os.listdir(output_dir) if f.endswith('.png') and not f.startswith('._')]
@@ -332,7 +331,7 @@ def main():
     # image_segmentation(device)
     # train(device)
     compute_segm_imgs(device)
-    # compute_polar_imgs(device)
+    compute_polar_imgs(device)
 
 
 if __name__ == '__main__':
