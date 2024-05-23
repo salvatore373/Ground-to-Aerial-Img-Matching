@@ -118,6 +118,11 @@ class SAN(nn.Module):
 
         sat_vgg_torch = torch.from_numpy(sat_vgg.numpy())
         grd_vgg_torch = torch.from_numpy(vgg_gr.numpy())
+
+        #permute shape of sat_vgg_torch and grd_vgg_torch:
+        sat_vgg_torch = sat_vgg_torch.permute(0, 3, 1, 2)
+        grd_vgg_torch = grd_vgg_torch.permute(0, 3, 1, 2)
+        
         correlation_out, correlation_orient = self.img_processor.correlation(grd_vgg_torch, sat_vgg_torch)
         cropped_sat = self.img_processor.crop_sat(sat_vgg_torch, correlation_orient, grd_vgg_torch.size()[-1])
         sat_mat = nn.functional.normalize(cropped_sat, p=2, dim=(2, 3, 4))
