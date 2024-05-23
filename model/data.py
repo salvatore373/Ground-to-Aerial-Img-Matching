@@ -84,7 +84,6 @@ class CrossViewDataset(Dataset):
             replace_dict[ind] = curr_cont
 
         self.pairs = pd.read_csv(csv_path, header=None)
-        self.pairs = self.pairs.iloc[:100]  # debug
         self.pairs.replace(replace_dict, regex=True, inplace=True)
 
         if base_path[-1] == '/':
