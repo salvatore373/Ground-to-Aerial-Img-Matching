@@ -8,11 +8,11 @@ from torch import optim
 from torch.utils.data import DataLoader, ConcatDataset
 from tqdm import tqdm
 
-from model import segmentation
-from model.data import CrossViewDataset, ImageTypes
-from model.san import SAN
-from model.trainer import Trainer
-from model.transformation import Transformation
+from san_model.model import segmentation
+from san_model.model.data import CrossViewDataset, ImageTypes
+from san_model.model.san import SAN
+from san_model.model.trainer import Trainer
+from san_model.model.transformation import Transformation
 
 
 def train(device):
@@ -144,6 +144,7 @@ def compute_segm_imgs(device):
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('salvatore')
 
     # load_data(device)
     # img_polar2 = polar_tensor(device)
@@ -153,7 +154,7 @@ def main():
     # vgg_test(device)
     # image_segmentation(device)
 
-    train(device)
+    # train(device)
     # compute_segm_imgs(device)
     # compute_polar_imgs(device)
 

@@ -2,8 +2,8 @@ import torch
 import torchvision.transforms
 from torch import nn
 
-from model.vgg import VGG16
-from model.transformation import Transformation
+from san_model.model.vgg import VGG16
+from san_model.model.transformation import Transformation
 
 
 class SAN(nn.Module):
