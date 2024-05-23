@@ -41,18 +41,18 @@ class CrossViewDataset(Dataset):
         # channel-first params
         self.ground_mean = torch.Tensor([[0.47, 0.46, 0.48]]).view(3, 1, 1)
         self.ground_std = torch.Tensor([[0.21, 0.24, 0.20]]).view(3, 1, 1)
-        self.sat_mean = torch.Tensor([[0.47, 0.46, 0.48]]).view(3, 1, 1)
-        self.sat_std = torch.Tensor([[0.21, 0.24, 0.20]]).view(3, 1, 1)
+        self.sat_mean = torch.Tensor([[[0.2420, 0.2506, 0.2173]]]).view(3, 1, 1)
+        self.sat_std = torch.Tensor([[0.0772, 0.0809, 0.0667]]).view(3, 1, 1)
         self.sat_polar_mean = torch.Tensor([[0.40, 0.36, 0.41]]).view(3, 1, 1)
         self.sat_polar_std = torch.Tensor([[0.15, 0.15, 0.14]]).view(3, 1, 1)
-        self.my_sat_polar_mean = torch.Tensor([[161.1773, 161.1886, 161.1790]]).view(3, 1, 1)
-        self.my_sat_polar_std = torch.Tensor([[28104.8008, 28108.5625, 28105.4355]]).view(3, 1, 1)
+        self.my_sat_polar_mean = torch.Tensor([[0.6321, 0.6321, 0.6321]]).view(3, 1, 1)
+        self.my_sat_polar_std = torch.Tensor([[0.4322, 0.4323, 0.4322]]).view(3, 1, 1)
         self.seg_mean = torch.Tensor([[0.33, 0.85, 0.8]]).view(3, 1, 1)
         self.seg_std = torch.Tensor([[0.38, 0.27, 0.28]]).view(3, 1, 1)
-        self.my_seg_mean = torch.Tensor([[44.7254, 6.8859, 53.6650, 161.1959]]).view(4, 1, 1)
-        self.my_seg_std = torch.Tensor([[2185.3887, 228.0155, 3125.1995, 28111.3359]]).view(4, 1, 1)
-        self.seg_polar_mean = torch.Tensor([[59.0299, 131.7719, 141.1782]]).view(3, 1, 1)
-        self.seg_polar_std = torch.Tensor([[7464.6562, 21814.2695, 23127.3535]]).view(3, 1, 1)
+        self.my_seg_mean = torch.Tensor([[0.1747, 0.0265, 0.2109, 0.6325]]).view(4, 1, 1)
+        self.my_seg_std = torch.Tensor([[0.0333, 0.0035, 0.0482, 0.4320]]).view(4, 1, 1)
+        self.seg_polar_mean = torch.Tensor([[0.2315, 0.5168, 0.5536]]).view(3, 1, 1)
+        self.seg_polar_std = torch.Tensor([[0.1148, 0.3355, 0.3557]]).view(3, 1, 1)
 
         match_folder_regex = r'^.+(?=\/)'
         replace_dict = {}
@@ -61,7 +61,8 @@ class CrossViewDataset(Dataset):
             curr_cont = {}
             if img_type == ImageTypes.PolarSat:
                 curr_cont[match_folder_regex] = 'my_sat_polar' if use_our_data else 'polarmap/normal'
-                self.normal_params_per_col.append((self.my_sat_polar_mean, self.my_sat_polar_std) if use_our_data else (self.sat_polar_mean, self.sat_polar_std))
+                self.normal_params_per_col.append((self.my_sat_polar_mean, self.my_sat_polar_std) if use_our_data else (
+                self.sat_polar_mean, self.sat_polar_std))
             elif img_type == ImageTypes.Sat:
                 curr_cont[match_folder_regex] = 'bingmap'
                 self.normal_params_per_col.append((self.sat_mean, self.sat_std))
@@ -71,13 +72,10 @@ class CrossViewDataset(Dataset):
                 curr_cont['png'] = 'jpg'
                 self.normal_params_per_col.append((self.ground_mean, self.ground_std))
             elif img_type == ImageTypes.SegmentedSat:
-                # curr_cont[match_folder_regex] = 'my_segsat' if use_our_data else 'segmap'
-                # curr_cont['input'] = 'output'
-                # self.normal_params_per_col.append(
-                #     (self.my_seg_mean, self.my_seg_std) if use_our_data else (self.seg_mean, self.seg_std))
-                curr_cont[match_folder_regex] = 'segmap'
+                curr_cont[match_folder_regex] = 'my_segsat' if use_our_data else 'segmap'
                 curr_cont['input'] = 'output'
-                self.normal_params_per_col.append((self.seg_mean, self.seg_std))
+                self.normal_params_per_col.append(
+                    (self.my_seg_mean, self.my_seg_std) if use_our_data else (self.seg_mean, self.seg_std))
             elif img_type == ImageTypes.PolarSegmentedSat:
                 curr_cont[match_folder_regex] = 'my_segsat_polar'
                 curr_cont['input'] = 'output'
@@ -86,6 +84,7 @@ class CrossViewDataset(Dataset):
             replace_dict[ind] = curr_cont
 
         self.pairs = pd.read_csv(csv_path, header=None)
+        self.pairs = self.pairs.iloc[:100]  # debug
         self.pairs.replace(replace_dict, regex=True, inplace=True)
 
         if base_path[-1] == '/':
@@ -96,7 +95,6 @@ class CrossViewDataset(Dataset):
         return len(self.pairs)
 
     def __getitem__(self, idx):
-        # reference https://github.com/pro1944191/SemanticAlignNet/blob/7438b28a78acc821109e08cfa024c52e6143d38f/SAN/polar_input_data_orien_FOV_3_Segmap_Concatenation.py#L82
         row = self.pairs.iloc[idx, :]
         ids = [re.search(r'/([^/]+)\..+$', path).group(1) for path in row]
 
