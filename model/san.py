@@ -119,11 +119,11 @@ class SAN(nn.Module):
         sat_vgg_torch = torch.from_numpy(sat_vgg.numpy())
         grd_vgg_torch = torch.from_numpy(vgg_gr.numpy())
 
-        #permute shape of sat_vgg_torch and grd_vgg_torch:
+        #permute shape of sat_vgg_torch and grd_vgg_torch: N.B.: Here was the mistake! 
         sat_vgg_torch = sat_vgg_torch.permute(0, 3, 1, 2)
         grd_vgg_torch = grd_vgg_torch.permute(0, 3, 1, 2)
         
-        correlation_out, correlation_orient = self.img_processor.correlation(grd_vgg_torch, sat_vgg_torch)
+        correlation_out, correlation_orient = self.img_processor.correlation(grd_vgg_torch, sat_vgg_torch) #Before the "correlation_out" shape was (Bs, H, Bg). Now, correctly is (Bs, W, Bg).
         cropped_sat = self.img_processor.crop_sat(sat_vgg_torch, correlation_orient, grd_vgg_torch.size()[-1])
         sat_mat = nn.functional.normalize(cropped_sat, p=2, dim=(2, 3, 4))
         distance = 2 - 2 * (torch.sum(sat_mat * grd_vgg_torch.unsqueeze(dim=0), dim=(2, 3, 4))).T
@@ -136,8 +136,10 @@ class SAN(nn.Module):
             a=tf.reduce_sum(input_tensor=sat_matrix * tf.expand_dims(grd_vgg, axis=0), axis=[2, 3, 4]))
         # shape = [batch_grd, batch_sat]
 
+        # If you print the distances mean, you'll see that they differ for a very small amount. Try.
+
         # return sat_matrix, distance, corr_orien  # shapes: (1,1,4,64,16), (1,1), (1,1)
-        return sat_matrix, distance, corr_orien  # shapes: (10,10,4,64,16), (10,10), (10,10)
+        return sat_matrix, distance, corr_orien  # shapes: (10,10,4,64,16), (10,10), (10,10) 
 
     def forward(self, ground_view, satellite_view, satellite_segmented):
         if not self.input_is_transformed:
