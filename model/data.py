@@ -42,17 +42,17 @@ class CrossViewDataset(Dataset):
         self.ground_mean = torch.Tensor([[0.47, 0.46, 0.48]]).view(3, 1, 1)
         self.ground_std = torch.Tensor([[0.21, 0.24, 0.20]]).view(3, 1, 1)
         self.sat_mean = torch.Tensor([[[0.2420, 0.2506, 0.2173]]]).view(3, 1, 1)
-        self.sat_std = torch.Tensor([[0.0772, 0.0809, 0.0667]]).view(3, 1, 1)
+        self.sat_std = torch.Tensor([[0.2778, 0.2844, 0.2583]]).view(3, 1, 1)
         self.sat_polar_mean = torch.Tensor([[0.40, 0.36, 0.41]]).view(3, 1, 1)
         self.sat_polar_std = torch.Tensor([[0.15, 0.15, 0.14]]).view(3, 1, 1)
         self.my_sat_polar_mean = torch.Tensor([[0.6321, 0.6321, 0.6321]]).view(3, 1, 1)
-        self.my_sat_polar_std = torch.Tensor([[0.4322, 0.4323, 0.4322]]).view(3, 1, 1)
+        self.my_sat_polar_std = torch.Tensor([[0.6574, 0.6575, 0.6574]]).view(3, 1, 1)
         self.seg_mean = torch.Tensor([[0.33, 0.85, 0.8]]).view(3, 1, 1)
         self.seg_std = torch.Tensor([[0.38, 0.27, 0.28]]).view(3, 1, 1)
         self.my_seg_mean = torch.Tensor([[0.1747, 0.0265, 0.2109, 0.6325]]).view(4, 1, 1)
-        self.my_seg_std = torch.Tensor([[0.0333, 0.0035, 0.0482, 0.4320]]).view(4, 1, 1)
+        self.my_seg_std = torch.Tensor([[0.1825, 0.0592, 0.2195, 0.6573]]).view(4, 1, 1)
         self.seg_polar_mean = torch.Tensor([[0.2315, 0.5168, 0.5536]]).view(3, 1, 1)
-        self.seg_polar_std = torch.Tensor([[0.1148, 0.3355, 0.3557]]).view(3, 1, 1)
+        self.seg_polar_std = torch.Tensor([[0.3388, 0.5792, 0.5964]]).view(3, 1, 1)
 
         match_folder_regex = r'^.+(?=\/)'
         replace_dict = {}
