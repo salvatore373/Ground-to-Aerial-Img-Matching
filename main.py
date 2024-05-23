@@ -1,29 +1,21 @@
 import os
 from pathlib import Path
 
-import pandas as pd
-import torch
 import torchvision
-from PIL import Image
-from tensorflow.python.keras.layers import Conv2D
 from torch import optim
 from torch.utils.data import DataLoader, ConcatDataset
-import torchvision as vision
-from torchvision.datasets import ImageFolder
-from torchvision.models import VGG16_Weights
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from torchvision import transforms
 from tqdm import tqdm
 
 from model.data import CrossViewDataset, ImageTypes
 from model.san import SAN
 from model.trainer import Trainer
-from transformation import Transformation
+from model.transformation import Transformation
 from model.vgg import VGG16
 
-import segmentation
+from model import segmentation
 
 
 def image_segmentation(device):
