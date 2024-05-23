@@ -1,6 +1,5 @@
 import torch
 from PIL import Image
-import matplotlib.pyplot as plt
 from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 
 

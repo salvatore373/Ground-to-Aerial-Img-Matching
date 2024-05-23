@@ -1,8 +1,8 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import torchvision
 from torchvision.models import VGG16_Weights
-import torch.nn.functional as F
 
 
 class _ConcatPadLayer(nn.Module):

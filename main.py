@@ -1,21 +1,18 @@
 import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import torch
 import torchvision
 from torch import optim
 from torch.utils.data import DataLoader, ConcatDataset
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
 from tqdm import tqdm
 
+from model import segmentation
 from model.data import CrossViewDataset, ImageTypes
 from model.san import SAN
 from model.trainer import Trainer
 from model.transformation import Transformation
-from model.vgg import VGG16
-
-from model import segmentation
 
 
 def train(device):
