@@ -162,4 +162,10 @@ class SAN(nn.Module):
         sat_mat = nn.functional.normalize(cropped_sat, p=2, dim=(2, 3, 4))
         distance = 2 - 2 * (torch.sum(sat_mat * vgg_ground_out.unsqueeze(dim=0), dim=(2, 3, 4))).T
 
+        # transform in tensorflow: in tf_correl the input tensors are tensorflow's tensor. Above the tensors are torch's tensors. With Maffo's code, the tensors must be in Pytorch's Framework. 
+        # Here, I first convert all in Tensorflow's tensor, permuting the shape. Then in tf_correl, when we convert all in Pytorch's tensors, we must permute the shape! -> Before: (batch, H, W, C), even if they were Pytorch tensors. Now: (batch, C, H, W)!
+        # vgg_ground_out_tf = tf.transpose(tf.convert_to_tensor(vgg_ground_out.detach().numpy()), perm=[0, 2, 3, 1])
+        # concat_tf = tf.transpose(tf.convert_to_tensor(concat.detach().numpy()), perm=[0, 2, 3, 1])
+        # sat, distance, orien = self.tf_correl(vgg_ground_out_tf, concat_tf)
+
         return distance
