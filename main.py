@@ -164,8 +164,8 @@ def train(device):
     trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
     valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
 
-    batch_size = 4
-    epochs = 2
+    batch_size = 8
+    epochs = 30
 
     train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
                                      dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,

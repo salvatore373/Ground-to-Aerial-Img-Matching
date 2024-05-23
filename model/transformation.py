@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+
 class Transformation:
     def __init__(self, name, aerial_size=0, height=0, width=0):
         """
@@ -30,7 +31,7 @@ class Transformation:
         """
         x0, x1, y0, y1 = bounds
         idxs = (x0 <= x) & (x < x1) & (y0 <= y) & (y < y1)
-    
+
         sample = np.zeros((x.shape[0], x.shape[1], img.shape[-1]))
         sample[idxs, :] = img[x[idxs], y[idxs], :]
 
@@ -50,7 +51,7 @@ class Transformation:
             img = img.permute(1, 2, 0).numpy()
         else:
             img = np.transpose(img, (1, 2, 0))
-            
+
         img_width = img.shape[0]
         img_height = img.shape[1]
 
@@ -95,48 +96,39 @@ class Transformation:
 
     def correlation(self, sat_matrix, grd_matrix):
         # matrix shape
-        
+
         s_n, s_c, s_h, s_w = sat_matrix.shape
         g_n, g_c, g_h, g_w = grd_matrix.shape
 
-        print(f"Shape of satellite matrix: {sat_matrix.shape}, Shape of ground matrix: {grd_matrix.shape}")
-        
         assert s_h == g_h and s_c == g_c, "Le matrici devono avere la stessa altezza e lo stesso numero di canali"
-        
+
         def warp_pad_columns(x, n):
             return torch.cat([x, x[:, :, :, :n]], dim=3)
-        
+
         n = g_w - 1
-        x = warp_pad_columns(sat_matrix, n) # shape: [batch_size_sat, channels, height, width + n]
-        print("Padded satellite matrix: ", x.shape)
+        x = warp_pad_columns(sat_matrix, n)  # shape: [batch_size_sat, channels, height, width + n]
 
         # Correlation
         f = grd_matrix.permute(1, 2, 3, 0)  # Shape: (C, H, W, batch_size_grd)
-        f = f.contiguous().view(g_c, g_h, g_w, -1) 
+        f = f.contiguous().view(g_c, g_h, g_w, -1)
         f = f.permute(3, 0, 1, 2)  # Shape: (batch_size_grd, C, H, W)
-        print("Filter matrix: ", f.shape)
-        
+
         # Convolution
         out = F.conv2d(x, f, stride=1, padding=0)  # Shape: (batch_size_sat, batch_size_grd, 1, w)
-        print(f"Convolution output: {out.shape}")
-        
+
         out = out.view(s_n, g_n, 1, s_w)  # Reshape
         h, w = out.shape[2:]
-        print("Reshaped output: ", out.shape)
 
         assert h == 1 and w == s_w, "L'altezza del risultato deve essere 1 e la larghezza deve corrispondere a quella di sat_matrix"
-        
-        out = out.squeeze(2)  # Shape: (batch_size_sat, batch_size_grd, w)
-        print("Squeezed output: ", out.shape)
-        out = out.permute(0, 2, 1)  # Shape: (batch_size_sat, w, batch_size_grd)
-        print("Permutated output: ", out.shape)
 
+        out = out.squeeze(2)  # Shape: (batch_size_sat, batch_size_grd, w)
+        out = out.permute(0, 2, 1)  # Shape: (batch_size_sat, w, batch_size_grd)
 
         # Orientation
         orien = torch.argmax(out, dim=1)  # Shape: (batch_size_sat, batch_size_grd)
-        
+
         return out, orien.to(dtype=torch.int32)
-    
+
     def torch_shape(self, x, rank):
         static_shape = list(x.size())
         dynamic_shape = list(x.shape)
@@ -190,7 +182,8 @@ class Transformation:
         index1 = torch.arange(grd_width, device=sat_matrix.device)
         sat_transposed = sat.permute(2, 0, 1, 3, 4)  # shape: [width, batch_sat, batch_grd, height, channels]
         sat_crop_matrix = sat_transposed[index1]  # shape: [grd_width, batch_sat, batch_grd, height, channels]
-        sat_crop_matrix = sat_crop_matrix.permute(1, 2, 3, 0, 4)  # shape: [batch_sat, batch_grd, height, grd_width, channels]
+        sat_crop_matrix = sat_crop_matrix.permute(1, 2, 3, 0,
+                                                  4)  # shape: [batch_sat, batch_grd, height, grd_width, channels]
 
         assert sat_crop_matrix.shape[3] == grd_width, "The width of the cropped aerial image is incorrect"
 
@@ -198,17 +191,13 @@ class Transformation:
         sat_crop_matrix = sat_crop_matrix.permute(0, 1, 4, 2, 3)
 
         return sat_crop_matrix
-    
+
     def corr_crop_distance(self, Fs, Fg):
         corr_out, corr_orien = self.correlation(Fs, Fg)
-        print("Fs: ", Fs.shape, "Fg: ", Fg.shape, "Correlation output: ", corr_out.shape, "Correlation orientation: ", corr_orien.shape)
         sat_cropped = self.crop_sat(Fs, corr_orien, Fg.shape[3])
-        print("Satellite cropped: ", sat_cropped.shape)
         # shape = [batch_sat, batch_grd, channel, h, grd_width]
 
         sat_matrix = F.normalize(sat_cropped, p=2, dim=(2, 3, 4))
-        distance = 2 - 2 * torch.sum(sat_matrix * Fg.unsqueeze(0), dim=(2, 3, 4)).T # shape = [batch_grd, batch_sat]
-
-        print(f"Satellite matrix: {sat_matrix.shape}, Distance: {distance.shape}, Correlation orientation: {corr_orien.shape}")
+        distance = 2 - 2 * torch.sum(sat_matrix * Fg.unsqueeze(0), dim=(2, 3, 4)).T  # shape = [batch_grd, batch_sat]
 
         return sat_matrix, distance, corr_orien
