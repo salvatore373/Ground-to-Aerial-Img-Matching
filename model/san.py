@@ -37,7 +37,6 @@ class SAN(nn.Module):
         :param loss_weight: The factor to multiply distances.
         :return: The value of the computed loss
         """
-        # reference https://github.com/pro1944191/SemanticAlignNet/blob/7438b28a78acc821109e08cfa024c52e6143d38f/SAN/train_no_session.py#L66
         # Get distances of positive pairs
         pos_dist = torch.diagonal(distance_matrix, dim1=0, dim2=1)
         num_pairs = distance_matrix.size()[0] * (distance_matrix.size()[0] - 1)
@@ -136,12 +135,10 @@ class SAN(nn.Module):
         return sat_matrix, distance, corr_orien  # shapes: (10,10,4,64,16), (10,10), (10,10)
 
     def forward(self, ground_view, satellite_view, satellite_segmented):
-        # reference https://github.com/pro1944191/SemanticAlignNet/blob/7438b28a78acc821109e08cfa024c52e6143d38f/SAN/train_no_session.py#L84
         if not self.input_is_transformed:
             satellite_view = torch.stack([self.img_processor.polar(img) for img in satellite_view.unbind(0)])
             satellite_segmented = torch.stack([self.img_processor.polar(img) for img in satellite_segmented.unbind(0)])
 
-        # todo: keep?
         ground_view = torchvision.transforms.Resize((128, 512))(ground_view)
         satellite_view = torchvision.transforms.Resize((128, 512))(satellite_view)
         satellite_segmented = torchvision.transforms.Resize((128, 512))(satellite_segmented)
