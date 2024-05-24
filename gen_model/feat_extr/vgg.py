@@ -1,18 +1,25 @@
 import torch
 from torch import nn
+import tensorflow as tf
 
 
 class VGG(nn.Module):
-    def __init__(self, device):
+    def __init__(self, ground_padding: bool = False, device=None):
         """
         Create a VGG network with the structure described in
         "Bridging the Domain Gap for Ground-to-Aerial Image Matching" by Regmi et al.
+
+        The input should be a batch: shape (batch_size, channels, height, width)
+        :param ground_padding: Whether to use the padding necessary when the input is an image of shape
+         (channels, 224, 1232).
         """
         super(VGG, self).__init__()
+        # reference: https://github.com/kregmi/cross-view-image-matching/blob/master/joint_feature_learning/src/VGG.py#L83
 
         kernel_size = 4
         stride = (2, 2)
-        padding = 65  # required value to have input equal to output size
+        # padding = 65  # required value to have input equal to output size
+        padding = 1
         dropout = 0.5
 
         self.layer1 = nn.Sequential(
@@ -22,31 +29,34 @@ class VGG(nn.Module):
         )
 
         self.layer2 = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=256, kernel_size=kernel_size, padding=padding, stride=stride,
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=kernel_size, padding=padding, stride=stride,
                       device=device),
             nn.ReLU(),
         )
 
         self.layer3 = nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=kernel_size, padding=padding, stride=stride,
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=kernel_size, padding=padding, stride=stride,
                       device=device),
             nn.ReLU(),
         )
 
         self.layer4 = nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=kernel_size, padding=padding, stride=stride,
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=kernel_size, padding=padding, stride=stride,
                       device=device),
             nn.ReLU(),
         )
 
         self.layer5 = nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=kernel_size, padding=padding, stride=stride,
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=kernel_size,
+                      padding=(1, 2) if ground_padding else padding, stride=stride,
+                      # nn.Conv2d(in_channels=512, out_channels=512, kernel_size=kernel_size, padding=, stride=stride,
                       device=device),
             nn.ReLU(),
         )
 
         self.layer6 = nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=kernel_size, padding=padding, stride=stride,
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=kernel_size,
+                      padding=(2, 2) if ground_padding else padding, stride=stride,
                       device=device),
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -94,4 +104,6 @@ class VGG(nn.Module):
         out7 = self.layer7(out6)
         out8 = self.layer8(out7)
 
-        return torch.concat([out6.reshape(1, -1), out7.reshape(1, -1), out8.reshape(1, -1)], dim=1)
+        batch_size = x.shape[0]
+        return torch.concat(
+            [out6.reshape(batch_size, -1), out7.reshape(batch_size, -1), out8.reshape(batch_size, -1)], dim=1)
