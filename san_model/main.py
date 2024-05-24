@@ -31,7 +31,7 @@ def train(device):
                                                            ImageTypes.Ground])
 
     train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=int(0.3 * len(train_dataset)))
-    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, sampler=train_sampler)
+    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
 
     san_model = SAN(input_is_transformed=True)
