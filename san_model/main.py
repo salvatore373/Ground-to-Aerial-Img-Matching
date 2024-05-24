@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 import torchvision
 from torch import optim
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader, ConcatDataset, RandomSampler
 from tqdm import tqdm
 
 from san_model.model import segmentation
@@ -29,7 +29,9 @@ def train(device):
     validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
                                           dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
                                                            ImageTypes.Ground])
-    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=int(0.3 * len(train_dataset)))
+    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, sampler=train_sampler)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
 
     san_model = SAN(input_is_transformed=True)
