@@ -5,35 +5,37 @@ import torch
 import xFork_gen as g
 
 def main():
-    image = cv2.imread('path_to_your_ground_view_image.jpg')
-    image = image / 255.0  # Normalize to range [0, 1]
-    image = image.astype(np.float32)
+    # Leggi l'immagine dal file
+    image = cv2.imread('sat_img.png')
 
+    # Genera la mappa dei bordi
     edgemap = ed.get_edgemap(image)
+    
+    # Converti la mappa dei bordi da float32 a uint8 per la visualizzazione
+    edgemap_display = (edgemap * 255).astype(np.uint8)
 
-    concatenated_input = ed.concatenate_image_and_edgemap(image, edgemap)
+    # Converti la mappa dei bordi in 3 canali per la concatenazione
+    edgemap_display = cv2.cvtColor(edgemap_display, cv2.COLOR_GRAY2BGR)
 
-    input_tensor = torch.from_numpy(concatenated_input.transpose((2, 0, 1))).unsqueeze(0)  # Converti a [B, C, H, W]
+    scale_percent = 50 # ridimensiona al 50% della dimensione originale
+    width = int(image.shape[1] * scale_percent / 100)
+    height = int(image.shape[0] * scale_percent / 100)
+    dim = (width, height)
 
-    # Definisci il modello
-    input_nc = 4  # 3 channels for RGB + 1 for edgemap
-    output_nc = 3  # Numero di canali per l'immagine di output (es. immagine satellitare)
-    output_nc_seg = 1  # Numero di canali per l'output di segmentazione
-    ngf = 64  # Numero di filtri nella prima convoluzione
+    # Ridimensiona entrambe le immagini
+    resized_image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+    resized_edgemap = cv2.resize(edgemap_display, dim, interpolation=cv2.INTER_AREA)
+    
+    # Concatenare le due immagini orizzontalmente
+    concatenated_image = np.hstack((resized_image, resized_edgemap))
 
-    model = g.xForkGenerator(input_nc, output_nc_seg, output_nc, ngf)
-    model = model.cuda()  # Se stai usando una GPU
-
-    # Passa l'input attraverso il modello
-    image_out, segmentation_out = model(input_tensor)
-
-    # Converti l'output in numpy array e visualizzalo
-    image_out = image_out.squeeze().cpu().detach().numpy().transpose((1, 2, 0))
-    segmentation_out = segmentation_out.squeeze().cpu().detach().numpy().transpose((1, 2, 0))
-
-    # Visualizza l'immagine generata e la segmentazione
-    cv2.imshow('Generated Image', image_out)
-    cv2.imshow('Segmentation Output', segmentation_out)
+    # Visualizza l'immagine concatenata
+    cv2.imshow('Image and Edgemap', concatenated_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()
+
+
 
