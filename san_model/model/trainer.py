@@ -1,5 +1,6 @@
 from typing import Type
 
+import numpy as np
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -95,3 +96,51 @@ class Trainer:
                 print('Training stopped by early stopping.')
                 break
             min_val_loss = min(min_val_loss, valid_loss)
+
+    def evaluate(self, test_dataloader: DataLoader, batch_size):
+        # 16, 4, 64
+        num_samples = batch_size * len(test_dataloader)
+        grd_accumulator = np.zeros([num_samples, 16, 4, 64])
+        sat_accumulator = np.zeros([num_samples, 16, 4, 64])
+        accumulator_ind = 0
+
+        self.model.eval()
+        with torch.no_grad():
+            for polar_sat, polar_segm_sat, ground, _, _, _ in test_dataloader:
+                # Load imgs on GPU
+                polar_sat, polar_segm_sat, ground = polar_sat.to(self.device), polar_segm_sat.to(
+                    self.device), ground.to(self.device)
+
+                dist_mat_pred, vgg_ground_out, sat_vgg_concat = self.model(ground, polar_sat, polar_segm_sat,
+                                                                           return_features=True)
+
+                grd_accumulator[accumulator_ind:accumulator_ind + batch_size, :] = vgg_ground_out
+                sat_accumulator[accumulator_ind:accumulator_ind + batch_size, :] = sat_vgg_concat
+
+                accumulator_ind += batch_size
+
+                # Remove images from GPU
+                polar_sat.detach()
+                polar_segm_sat.detach()
+                ground.detach()
+                del polar_sat
+                del polar_segm_sat
+                del ground
+                torch.cuda.empty_cache()
+
+        # Flatten features and compute distance
+        grd_accumulator = grd_accumulator.reshape(num_samples, -1)
+        sat_accumulator = sat_accumulator.reshape(num_samples, -1)
+        sat_accumulator /= np.linalg.norm(sat_accumulator, axis=-1, keepdims=True)
+        dist_array = 2 - 2 * np.matmul(grd_accumulator, np.transpose(sat_accumulator))
+
+        # Compute the accuracy
+        pos_samples = 0
+        topK = 1
+        for i in range(num_samples):
+            ground_truth_dist = dist_array[i, i]
+            false_pos = np.sum(dist_array[i, :] < ground_truth_dist)
+            if false_pos < topK:
+                # The ground image has been correctly matched to the ground truth with the lowest distance
+                pos_samples += 1
+        return pos_samples / num_samples  # accuracy

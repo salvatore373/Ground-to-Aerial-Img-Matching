@@ -50,7 +50,7 @@ class SAN(nn.Module):
 
         return (loss_gr_to_sat + loss_sat_to_gr) / 2.0
 
-    def forward(self, ground_view, satellite_view, satellite_segmented):
+    def forward(self, ground_view, satellite_view, satellite_segmented, return_features: bool = False):
         if not self.input_is_transformed:
             satellite_view = torch.stack([self.img_processor.polar(img) for img in satellite_view.unbind(0)])
             satellite_segmented = torch.stack([self.img_processor.polar(img) for img in satellite_segmented.unbind(0)])
@@ -68,9 +68,13 @@ class SAN(nn.Module):
         # Concatenate their results
         concat = torch.cat((vgg_sat_out, vgg_sat_segm_out), dim=0 if len(vgg_sat_out.size()) == 3 else 1)
 
+        # Compute the distance matrix
         correlation_out, correlation_orient = self.img_processor.correlation(vgg_ground_out, concat)
         cropped_sat = self.img_processor.crop_sat(concat, correlation_orient, vgg_ground_out.size()[-1])
         sat_mat = nn.functional.normalize(cropped_sat, p=2, dim=(2, 3, 4))
         distance = 2 - 2 * (torch.sum(sat_mat * vgg_ground_out.unsqueeze(dim=0), dim=(2, 3, 4))).T
 
-        return distance
+        if return_features:
+            return distance, vgg_ground_out, concat
+        else:
+            return distance

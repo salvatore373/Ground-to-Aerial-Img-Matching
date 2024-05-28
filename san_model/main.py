@@ -18,20 +18,25 @@ from san_model.model.transformation import Transformation
 def train(device):
     dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
     trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
-    valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
 
     batch_size = 8
     epochs = 30
 
-    train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
-                                     dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
-                                                      ImageTypes.Ground])
-    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
-                                          dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
-                                                           ImageTypes.Ground])
+    full_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+                                    dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
+                                                     ImageTypes.Ground])
+    train_dataset, validation_dataset = torch.utils.data.random_split(full_dataset, [0.9, 0.1])
+
+    # train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+    #                                  dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
+    #                                                   ImageTypes.Ground])
+    # validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+    #                                       dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
+    #                                                        ImageTypes.Ground])
 
     train_sampler = RandomSampler(train_dataset, replacement=False, num_samples=int(0.1 * len(train_dataset)))
-    valid_sampler = RandomSampler(validation_dataset, replacement=False, num_samples=int(0.05 * len(validation_dataset)))
+    valid_sampler = RandomSampler(validation_dataset, replacement=False,
+                                  num_samples=int(0.05 * len(validation_dataset)))
     training_dataloader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sampler=valid_sampler)
 
@@ -47,6 +52,28 @@ def train(device):
     import time
     torch.save(san_model.state_dict(),
                f"/Volumes/SALVATORE R/Università/CV/hw_data/model/{int(time.time() * 1000)}.pt")
+
+
+def evaluate(device):
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
+
+    batch_size = 8
+
+    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+                                          dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
+                                                           ImageTypes.Ground])
+    valid_sampler = RandomSampler(validation_dataset, replacement=False,
+                                  num_samples=int(0.05 * len(validation_dataset)))
+    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sampler=valid_sampler, drop_last=True)
+
+    san_model = SAN(input_is_transformed=True, device=device)
+    san_model.load_state_dict(
+        torch.load('/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/1716829223265.pt', map_location=device))
+    trainer = Trainer(san_model, device=device)
+    print('Starting evaluation...')
+    accuracy = trainer.evaluate(validation_dataloader, batch_size)
+    print(f'accuracy: {accuracy:.4f}')
 
 
 def comp_mean_std_dev(path_to_dir, channels=3):
@@ -158,6 +185,7 @@ def main():
     # image_segmentation(device)
 
     train(device)
+    # evaluate(device)
     # compute_segm_imgs(device)
     # compute_polar_imgs(device)
 
