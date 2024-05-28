@@ -7,7 +7,7 @@ from san_model.model.transformation import Transformation
 
 
 class SAN(nn.Module):
-    def __init__(self, input_is_transformed):
+    def __init__(self, input_is_transformed, device: torch.device = None):
         """
         Create a SAN as defined in the paper by Pro et al. "https://arxiv.org/pdf/2404.11302"
 
@@ -17,9 +17,9 @@ class SAN(nn.Module):
         super(SAN, self).__init__()
 
         self.input_is_transformed = input_is_transformed
-        self.vgg_ground = VGG16(include_classifier_part=False, circular=False)
-        self.vgg_sat = VGG16(include_classifier_part=False, circular=True)
-        self.vgg_sat_segm = VGG16(include_classifier_part=False, circular=True)
+        self.vgg_ground = VGG16(include_classifier_part=False, circular=False, device=device)
+        self.vgg_sat = VGG16(include_classifier_part=False, circular=True, device=device)
+        self.vgg_sat_segm = VGG16(include_classifier_part=False, circular=True, device=device)
 
         # The original size of the aerial image (square)
         self.aerial_imgs_size = 370

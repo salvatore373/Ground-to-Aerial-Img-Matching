@@ -8,8 +8,9 @@ from torch.utils.data import DataLoader
 class Trainer:
     """Helper class for model's training and evaluation."""
 
-    def __init__(self, model: nn.Module, ):
+    def __init__(self, model: nn.Module, device: torch.device):
         self.model = model
+        self.device = device
 
     def train(self,
               train_dataloader: DataLoader,
@@ -39,12 +40,25 @@ class Trainer:
             for step, (polar_sat, polar_segm_sat, ground, _, _, _) in enumerate(train_dataloader):
                 optimizer.zero_grad()
 
+                # Load imgs on GPU
+                polar_sat, polar_segm_sat, ground = polar_sat.to(self.device), polar_segm_sat.to(
+                    self.device), ground.to(self.device)
+
                 pred = self.model(ground, polar_sat, polar_segm_sat)
 
                 loss = loss_function(pred)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item()
+
+                # Remove images from GPU
+                polar_sat.detach()
+                polar_segm_sat.detach()
+                ground.detach()
+                del polar_sat
+                del polar_segm_sat
+                del ground
+                torch.cuda.empty_cache()
 
                 print('\t[E: {:2d} @ step {}] current avg loss = {:0.4f}'
                       .format(epoch, step, train_loss / (step + 1)))
@@ -55,9 +69,20 @@ class Trainer:
             self.model.eval()
             with torch.no_grad():
                 for polar_sat, polar_segm_sat, ground, _, _, _ in valid_dataloader:
+                    # Load imgs on GPU
+                    polar_sat, polar_segm_sat, ground = polar_sat.to(self.device), polar_segm_sat.to(
+                        self.device), ground.to(self.device)
                     pred = self.model(ground, polar_sat, polar_segm_sat)
                     loss = loss_function(pred)
                     valid_loss += loss.item()
+                    # Remove images from GPU
+                    polar_sat.detach()
+                    polar_segm_sat.detach()
+                    ground.detach()
+                    del polar_sat
+                    del polar_segm_sat
+                    del ground
+                    torch.cuda.empty_cache()
             valid_loss /= len(valid_dataloader)
             print('\t[E: {:2d}] valid loss = {:0.4f}'.format(epoch, valid_loss))
 

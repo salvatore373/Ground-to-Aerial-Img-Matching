@@ -30,12 +30,13 @@ def train(device):
                                           dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
                                                            ImageTypes.Ground])
 
-    train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=int(0.3 * len(train_dataset)))
+    train_sampler = RandomSampler(train_dataset, replacement=False, num_samples=int(0.1 * len(train_dataset)))
+    valid_sampler = RandomSampler(validation_dataset, replacement=False, num_samples=int(0.05 * len(validation_dataset)))
     training_dataloader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
-    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
+    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sampler=valid_sampler)
 
-    san_model = SAN(input_is_transformed=True)
-    trainer = Trainer(san_model)
+    san_model = SAN(input_is_transformed=True, device=device)
+    trainer = Trainer(san_model, device=device)
     trainer.train(training_dataloader,
                   validation_dataloader,
                   epochs=epochs,
@@ -146,7 +147,7 @@ def compute_segm_imgs(device):
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('salvatore')
+    # print('salvatore')
 
     # load_data(device)
     # img_polar2 = polar_tensor(device)
@@ -156,7 +157,7 @@ def main():
     # vgg_test(device)
     # image_segmentation(device)
 
-    # train(device)
+    train(device)
     # compute_segm_imgs(device)
     # compute_polar_imgs(device)
 
