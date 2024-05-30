@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 
 
 class ImageTypes(enum.Enum):
+    SyntheticSat = "synthetic_sat"
     SegmentedSat = "segmented_sat"
     PolarSat = "polar_sat"
     PolarSegmentedSat = "polar_seg_sat"
@@ -77,6 +78,11 @@ class CrossViewDataset(Dataset):
                 self.normal_params_per_col.append(
                     (self.my_seg_mean, self.my_seg_std) if use_our_data else (self.seg_mean, self.seg_std))
             elif img_type == ImageTypes.PolarSegmentedSat:
+                curr_cont[match_folder_regex] = 'my_segsat_polar'
+                curr_cont['input'] = 'output'
+                self.normal_params_per_col.append((self.seg_polar_mean, self.seg_polar_std))
+            elif img_type == ImageTypes.SyntheticSat:
+                # todo: complete below
                 curr_cont[match_folder_regex] = 'my_segsat_polar'
                 curr_cont['input'] = 'output'
                 self.normal_params_per_col.append((self.seg_polar_mean, self.seg_polar_std))
