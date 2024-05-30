@@ -30,7 +30,8 @@ class SAN(nn.Module):
 
         self.img_processor = Transformation('_', self.aerial_imgs_size, self.polar_height, self.polar_width)
 
-    def triplet_loss(self, distance_matrix: torch.Tensor, loss_weight: float = 10.0) -> torch.Tensor:
+    @staticmethod
+    def triplet_loss(distance_matrix: torch.Tensor, loss_weight: float = 10.0) -> torch.Tensor:
         """
         Compute the triplet loss with soft margin with the given distances between samples.
         :param distance_matrix: A matrix of distances between samples, with shape batch_gr, batch_sat.
