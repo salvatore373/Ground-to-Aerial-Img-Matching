@@ -54,6 +54,8 @@ class CrossViewDataset(Dataset):
         self.my_seg_std = torch.Tensor([[0.1825, 0.0592, 0.2195, 0.6573]]).view(4, 1, 1)
         self.seg_polar_mean = torch.Tensor([[0.2315, 0.5168, 0.5536]]).view(3, 1, 1)
         self.seg_polar_std = torch.Tensor([[0.3388, 0.5792, 0.5964]]).view(3, 1, 1)
+        self.my_synth_sat_mean = torch.Tensor([[0.2984, 0.3148, 0.3164]]).view(3, 1, 1)
+        self.my_synth_sat_std = torch.Tensor([[0.3135, 0.3302, 0.3331]]).view(3, 1, 1)
 
         match_folder_regex = r'^.+(?=\/)'
         replace_dict = {}
@@ -82,10 +84,8 @@ class CrossViewDataset(Dataset):
                 curr_cont['input'] = 'output'
                 self.normal_params_per_col.append((self.seg_polar_mean, self.seg_polar_std))
             elif img_type == ImageTypes.SyntheticSat:
-                # todo: complete below
-                curr_cont[match_folder_regex] = 'my_segsat_polar'
-                curr_cont['input'] = 'output'
-                self.normal_params_per_col.append((self.seg_polar_mean, self.seg_polar_std))
+                curr_cont[match_folder_regex] = 'my_synthetic_images'
+                self.normal_params_per_col.append((self.my_synth_sat_mean, self.my_synth_sat_std))
 
             replace_dict[ind] = curr_cont
 
