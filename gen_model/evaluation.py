@@ -15,6 +15,12 @@ import numpy as np
 
 def create_dataset(device, dataset_path, validation_path):
 
+    """ Create the validation dataset. 
+    dataset_path: the path to the dataset
+    validation_path: the path to the validation CSV file
+    device: the device to run the code on
+    """
+
     batch_size = 8
 
     validation_dataset = CrossViewDataset(validation_path, base_path=dataset_path, device=device, normalize_imgs=True,
@@ -39,6 +45,12 @@ def create_dataset(device, dataset_path, validation_path):
     return validation_dataloader
 
 def evaluate(device, dataloader):
+    
+    """ Evaluate the model on the validation dataset. 
+    device: the device to run the code on
+    dataloader: the validation dataloader
+    """
+
     # Load the model
     model = FeatureExtractor(device)
 
