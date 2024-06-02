@@ -48,6 +48,10 @@ class FeatureExtractor(nn.Module):
     def __call__(self, ground, satellite, synthetic_satellite):
         return self.forward(ground, satellite, synthetic_satellite)
 
+    def load_weights(self, path_to_jfl_weights, path_to_ff_weights):
+        self.joint_feature_learning_net.load_state_dict(torch.load(path_to_jfl_weights))
+        self.feature_fusion_net.load_state_dict(torch.load(path_to_ff_weights))
+
     def forward(self, ground, satellite, synthetic_satellite):
         """
         Makes a forward pass in the whole network, and returns a tuple that at position 0
@@ -69,14 +73,14 @@ class JointFeatureLearningNetwork(nn.Module):
 
         self.ground_vgg = VGG(device=device, ground_padding=True)
         self.sat_vgg = VGG(device=device)
-        self.sat_gan_vgg = VGG(device=device)
-
-        # todo: share weights
+        # self.sat_gan_vgg = VGG(device=device)
+        self.sat_gan_vgg = self.sat_vgg  # enforce weight sharing
 
         # reference https://github.com/kregmi/cross-view-image-matching/blob/master/joint_feature_learning/src/siamese_fc.py#L57
         self.ground_linear = nn.Linear(in_features=53760, out_features=1000, device=device)
         self.sat_linear = nn.Linear(in_features=43008, out_features=1000, device=device)
-        self.sat_gan_linear = nn.Linear(in_features=43008, out_features=1000, device=device)
+        # self.sat_gan_linear = nn.Linear(in_features=43008, out_features=1000, device=device)
+        self.sat_gan_linear = self.sat_linear  # enforce weight sharing
 
     @staticmethod
     def triplet_loss(output_tuple):

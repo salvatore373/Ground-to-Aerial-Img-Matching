@@ -2,6 +2,10 @@ import torch
 import sys
 import os
 
+from torch import optim
+
+from san_model.model.trainer import Trainer
+
 # Aggiungi la directory superiore al percorso di ricerca dei moduli
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -9,9 +13,41 @@ from gen_model.feat_extr.feature_extractor import JointFeatureLearningNetwork, F
 from gen_model.feat_extr.vgg import VGG
 import tensorflow as tf
 from san_model.model.data import CrossViewDataset, ImageTypes
-from torch.utils.data import DataLoader,SequentialSampler
-from a2seg import a2seg
-from seg2sa import seg2sa
+from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
+# from a2seg import a2seg
+# from seg2sa import seg2sa
+
+
+def train_joint_feature_learner(device):
+    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
+    trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train500-19zl.csv"
+
+    batch_size = 8
+    epochs = 30
+
+    full_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+                                    dataset_content=[ImageTypes.Sat, ImageTypes.SyntheticSat,
+                                                     ImageTypes.Ground])
+    train_dataset, validation_dataset = torch.utils.data.random_split(full_dataset, [0.9, 0.1])
+
+    train_sampler = RandomSampler(train_dataset, replacement=False, num_samples=int(0.1 * len(train_dataset)))
+    valid_sampler = RandomSampler(validation_dataset, replacement=False,
+                                  num_samples=int(0.05 * len(validation_dataset)))
+    training_dataloader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
+    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sampler=valid_sampler)
+
+    gen_model = FeatureExtractor(device)
+    gen_model.load_weights(
+        '/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/models_gen/jfl_1717343102687.pt',
+        '/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/models_gen/ff_1717343102687.pt'
+    )
+    trainer = Trainer(gen_model, device=device)
+    trainer.train(training_dataloader,
+                  validation_dataloader,
+                  epochs=epochs,
+                  loss_function=gen_model.triplet_loss,
+                  optimizer=optim.Adam,
+                  learning_rate=10e-4, weight_decay=0.01)
 
 
 def three_stream_joint_feat_learning(x_sat=None, x_grd=None, x_grd_gan=None, trainable=True):
@@ -124,10 +160,12 @@ def test_network():
     res = FeatureExtractor(device)(grnd_img, sat_img, sat_synth_img)
     print()
 
+
 def create_segmented_dataset(device):
     folder_path = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/bingmap/"
     segmented_images = a2seg(folder_path)
     return segmented_images
+
 
 def create_dataset(device, folder_path, base_path):
     """ Create the dataset for the model. 
@@ -136,7 +174,7 @@ def create_dataset(device, folder_path, base_path):
         folder_path: The path to the dataset.
         base_path: The base path to the dataset.
     """
-    
+
     batch_size = 8
 
     validation_dataset = CrossViewDataset(folder_path, base_path=base_path, device=device, normalize_imgs=True,
@@ -145,14 +183,13 @@ def create_dataset(device, folder_path, base_path):
     valid_sampler = SequentialSampler(validation_dataset)
 
     validation_dataloader = DataLoader(
-        validation_dataset, 
-        batch_size=batch_size, 
-        sampler=valid_sampler, 
+        validation_dataset,
+        batch_size=batch_size,
+        sampler=valid_sampler,
         drop_last=True
     )
     return validation_dataloader
-        
-    
+
 
 def synthetized_image(device):
     """ Generate synthetic images from segmented images. 
@@ -160,15 +197,14 @@ def synthetized_image(device):
         device: The device to run the model on.
     """
 
-
-    #folder_path_val = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/val-19zl.csv"
+    # folder_path_val = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/val-19zl.csv"
     folder_path_train = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/train-19zl.csv"
 
     base_path = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/"
 
     dataset = create_dataset(device, folder_path_train, base_path)
 
-    #output_folder_val = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/my_synthetic_images_val/"
+    # output_folder_val = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/my_synthetic_images_val/"
     output_folder_train = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/my_synthetic_images_train/"
 
     prompt = "Aerial image of a segmented land area or cityscape"
@@ -177,14 +213,17 @@ def synthetized_image(device):
     return synt_images
 
 
-
 def main():
-    #test_network()
+    # test_network()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     # dataset = create_segmented_dataset(device)
-    synt_img = synthetized_image(device)
+    # synt_img = synthetized_image(device)
     # eight_layer_conv_multiscale()
     # three_stream_joint_feat_learning()
+
+    train_joint_feature_learner(device)
+
 
 if __name__ == '__main__':
     main()
