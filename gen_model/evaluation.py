@@ -13,13 +13,11 @@ from torch.utils.data import DataLoader,SequentialSampler, Subset
 
 import numpy as np
 
-def create_dataset(device):
-    dataset_path = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset"
-    valCSV = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/val-19zl.csv"
+def create_dataset(device, dataset_path, validation_path):
 
     batch_size = 8
 
-    validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
+    validation_dataset = CrossViewDataset(validation_path, base_path=dataset_path, device=device, normalize_imgs=True,
                                           dataset_content=[ImageTypes.Ground, ImageTypes.Sat,
                                                            ImageTypes.SyntheticSat])
     
@@ -32,7 +30,7 @@ def create_dataset(device):
 
     print("Validation dataset created.")
     
-    # Visiting the dataset
+    # Visiting the dataset, DEBUG
     query = validation_subset[0]
     print("Query: ", query)
     print("Query type: ", type(query))
@@ -128,7 +126,12 @@ def calculate_recall(distances, ground_truth_indices, top_k):
 def main():
     #test_network()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    validation_dataloader = create_dataset(device)
+
+    # CHANGE THIS FOR RUNNING THE CODE
+    dataset_path = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset"
+    valCSV = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/val-19zl.csv"
+
+    validation_dataloader = create_dataset(device, dataset_path, valCSV)
     evaluate(device, validation_dataloader)
     # eight_layer_conv_multiscale()
     # three_stream_joint_feat_learning()
