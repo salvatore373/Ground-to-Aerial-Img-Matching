@@ -1,152 +1,147 @@
 import torch
-import sys
-import os
+import torchvision
+from torch import nn
 
-# Aggiungi la directory superiore al percorso di ricerca dei moduli
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from gen_model.feat_extr.feature_extractor import JointFeatureLearningNetwork, FeatureExtractor
 from gen_model.feat_extr.vgg import VGG
-import tensorflow as tf
-from san_model.model.data import CrossViewDataset, ImageTypes
-from torch.utils.data import DataLoader,SequentialSampler, Subset
+from san_model.model.san import SAN
 
-import numpy as np
 
-def create_dataset(device, dataset_path, validation_path):
-
-    """ Create the validation dataset. 
-    dataset_path: the path to the dataset
-    validation_path: the path to the validation CSV file
-    device: the device to run the code on
+class FeatureExtractorLoss:
+    """
+    A custom loss defined in order to train the JointFeatureLearningNetwork and the FeatureFusionNetwork jointly.
     """
 
-    batch_size = 8
+    def __init__(self, loss_net_1: torch.Tensor, loss_net_2: torch.Tensor):
+        self.loss_net_1 = loss_net_1
+        self.loss_net_2 = loss_net_2
 
-    validation_dataset = CrossViewDataset(validation_path, base_path=dataset_path, device=device, normalize_imgs=True,
-                                          dataset_content=[ImageTypes.Ground, ImageTypes.Sat,
-                                                           ImageTypes.SyntheticSat])
-    
-    # Use only the first 503 items
-    indices = list(range(503))
-    validation_subset = Subset(validation_dataset, indices)
+    def backward(self):
+        self.loss_net_1.backward()
+        self.loss_net_2.backward()
 
-    valid_sampler = SequentialSampler(validation_subset)
-    validation_dataloader = DataLoader(validation_subset, batch_size=batch_size, sampler=valid_sampler, drop_last=True)
-
-    print("Validation dataset created.")
-    
-    # Visiting the dataset, DEBUG
-    query = validation_subset[0]
-    print("Query: ", query)
-    print("Query type: ", type(query))
-    print("Query shape: ", query[0].shape)
-    
-    return validation_dataloader
-
-def evaluate(device, dataloader):
-    
-    """ Evaluate the model on the validation dataset. 
-    device: the device to run the code on
-    dataloader: the validation dataloader
-    """
-
-    # Load the model
-    model = FeatureExtractor(device)
-
-    ground_features_jfl = []
-    satellite_features_jfl = []
-    ground_features_fusion = []
-    satellite_features_fusion = []
-    ground_truth_indices = []
-
-    # Evaluate the model
-    for i, (ground, sat, synt, _, _, _) in enumerate(dataloader):
-        ground = ground.to(device)
-        sat = sat.to(device)
-        synt = synt.to(device)
-
-        with torch.no_grad():
-            out_net1, out_net2 = model(ground, sat, synt)
-            
-            # Joint Feature Learning
-            ground_feats_jfl = out_net1[0].cpu().numpy()
-            satellite_feats_jfl = out_net1[1].cpu().numpy()
-
-            # Feature Fusion
-            fusion_feats = out_net2[1].cpu().numpy()
-            fusion_sat_feats = out_net2[0].cpu().numpy()
-
-            ground_features_jfl.append(ground_feats_jfl)
-            satellite_features_jfl.append(satellite_feats_jfl)
-            ground_features_fusion.append(fusion_feats)
-            satellite_features_fusion.append(fusion_sat_feats)
-            ground_truth_indices.extend(range(i * len(ground), i * len(ground) + len(ground)))
-
-    # Convert to numpy arrays
-    ground_features_jfl = np.vstack(ground_features_jfl)
-    satellite_features_jfl = np.vstack(satellite_features_jfl)
-    ground_features_fusion = np.vstack(ground_features_fusion)
-    satellite_features_fusion = np.vstack(satellite_features_fusion)
-
-    # Calculate distances for Joint Feature Learning
-    distances_jfl = np.linalg.norm(ground_features_jfl[:, np.newaxis] - satellite_features_jfl, axis=2)
-
-    # Calculate distances for Feature Fusion
-    distances_fusion = np.linalg.norm(ground_features_fusion[:, np.newaxis] - satellite_features_fusion, axis=2)
-
-    # Calculate top-k recalls for Joint Feature Learning
-    top_1_recall_jfl = calculate_recall(distances_jfl, ground_truth_indices, 1)
-    top_10_recall_jfl = calculate_recall(distances_jfl, ground_truth_indices, 10)
-    top_1_percent_recall_jfl = calculate_recall(distances_jfl, ground_truth_indices, int(0.01 * distances_jfl.shape[1]))
-
-    # Calculate top-k recalls for Feature Fusion
-    top_1_recall_fusion = calculate_recall(distances_fusion, ground_truth_indices, 1)
-    top_10_recall_fusion = calculate_recall(distances_fusion, ground_truth_indices, 10)
-    top_1_percent_recall_fusion = calculate_recall(distances_fusion, ground_truth_indices, int(0.01 * distances_fusion.shape[1]))
-
-    print(f'Joint Feature Learning - Top-1 Recall: {top_1_recall_jfl:.4f}')
-    print(f'Joint Feature Learning - Top-10 Recall: {top_10_recall_jfl:.4f}')
-    print(f'Joint Feature Learning - Top-1% Recall: {top_1_percent_recall_jfl:.4f}')
-
-    print(f'Feature Fusion - Top-1 Recall: {top_1_recall_fusion:.4f}')
-    print(f'Feature Fusion - Top-10 Recall: {top_10_recall_fusion:.4f}')
-    print(f'Feature Fusion - Top-1% Recall: {top_1_percent_recall_fusion:.4f}')
-
-def calculate_recall(distances, ground_truth_indices, top_k):
-    """
-    Calculate the recall for top-k matches.
-    
-    distances: 2D array where distances[i, j] is the distance between ground image i and aerial image j
-    ground_truth_indices: 1D array where ground_truth_indices[i] is the index of the correct match for ground image i
-    top_k: the value of k for top-k recall
-    
-    Returns: recall value
-    """
-    num_queries = distances.shape[0]
-    correct_matches = 0
-    
-    for i in range(num_queries):
-        sorted_indices = np.argsort(distances[i])
-        if ground_truth_indices[i] in sorted_indices[:top_k]:
-            correct_matches += 1
-    
-    recall = correct_matches / num_queries
-    return recall
+    def item(self):
+        return self.loss_net_1.item() + self.loss_net_2.item()
 
 
-def main():
-    #test_network()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+class FeatureExtractor(nn.Module):
+    def __init__(self, device):
+        """
+        Create the network to extract features from a triple of ground, satellite and synthetic satellite images,
+        as described in "Bridging the Domain Gap for Ground-to-Aerial Image Matching" by Regmi et al.
+        This class defines the Joint Feature Learning and Feature Fusion parts
+        """
+        super(FeatureExtractor, self).__init__()
 
-    # CHANGE THIS FOR RUNNING THE CODE
-    dataset_path = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset"
-    valCSV = "D:/Università/CV/Ground-to-Aerial-Img-Matching/data/CVUSA_subset/val-19zl.csv"
+        self.joint_feature_learning_net = JointFeatureLearningNetwork(device=device)
+        self.feature_fusion_net = FeatureFusionNetwork(device=device)
 
-    validation_dataloader = create_dataset(device, dataset_path, valCSV)
-    evaluate(device, validation_dataloader)
-    # eight_layer_conv_multiscale()
-    # three_stream_joint_feat_learning()
+    @staticmethod
+    def triplet_loss(output_tuple):
+        out_net1, out_net2 = output_tuple
 
-if __name__ == '__main__':
-    main()
+        loss_net_1 = JointFeatureLearningNetwork.triplet_loss(out_net1)
+        loss_net_2 = FeatureFusionNetwork.triplet_loss(out_net2)
+
+        return FeatureExtractorLoss(loss_net_1, loss_net_2)
+
+    # make class callable with braces
+    def __call__(self, ground, satellite, synthetic_satellite):
+        return self.forward(ground, satellite, synthetic_satellite)
+
+    def load_weights(self, path_to_jfl_weights, path_to_ff_weights):
+        self.joint_feature_learning_net.load_state_dict(torch.load(path_to_jfl_weights))
+        self.feature_fusion_net.load_state_dict(torch.load(path_to_ff_weights))
+
+    def forward(self, ground, satellite, synthetic_satellite):
+        """
+        Makes a forward pass in the whole network, and returns a tuple that at position 0
+        contains the output of the Joint Feature Learning network and at position 1 the output of the Feature
+        Fusion network.
+        """
+        out_net1 = self.joint_feature_learning_net(ground, satellite, synthetic_satellite)
+        # Remove gradient information from the tensors passed to network 2 in order to make the learning
+        # process of the 2 networks independent of each other.
+        inp_net2 = tuple(tensor.detach().clone() for tensor in out_net1)
+        out_net2 = self.feature_fusion_net(*inp_net2)
+
+        return out_net1, out_net2
+
+
+class JointFeatureLearningNetwork(nn.Module):
+    def __init__(self, device):
+        super(JointFeatureLearningNetwork, self).__init__()
+
+        self.ground_vgg = VGG(device=device, ground_padding=True)
+        self.sat_vgg = VGG(device=device)
+        # self.sat_gan_vgg = VGG(device=device)
+        self.sat_gan_vgg = self.sat_vgg  # enforce weight sharing
+
+        # reference https://github.com/kregmi/cross-view-image-matching/blob/master/joint_feature_learning/src/siamese_fc.py#L57
+        self.ground_linear = nn.Linear(in_features=53760, out_features=1000, device=device)
+        self.sat_linear = nn.Linear(in_features=43008, out_features=1000, device=device)
+        # self.sat_gan_linear = nn.Linear(in_features=43008, out_features=1000, device=device)
+        self.sat_gan_linear = self.sat_linear  # enforce weight sharing
+
+    @staticmethod
+    def triplet_loss(output_tuple):
+        gr_lin_out, sat_lin_out, sat_gan_lin_out = output_tuple
+
+        distance1 = 2 - 2 * (sat_lin_out @ gr_lin_out.T)
+        loss1 = SAN.triplet_loss(distance1)
+        distance2 = 2 - 2 * (sat_gan_lin_out @ sat_lin_out.T)
+        loss2 = SAN.triplet_loss(distance2)
+
+        return (10 * loss1 + loss2) / 11
+
+    def forward(self, ground, satellite, synthetic_satellite):
+        ground = torchvision.transforms.Resize((224, 1232))(ground)
+        satellite = torchvision.transforms.Resize((512, 512))(satellite)
+        synthetic_satellite = torchvision.transforms.Resize((512, 512))(synthetic_satellite)
+
+        ground_vgg_out = self.ground_vgg(ground)
+        sat_vgg_out = self.sat_vgg(satellite)
+        sat_gan_vgg_out = self.sat_gan_vgg(synthetic_satellite)
+
+        gr_lin_out = self.ground_linear(ground_vgg_out)
+        gr_lin_out = nn.functional.normalize(gr_lin_out, p=2, dim=1)
+
+        sat_lin_out = self.sat_linear(sat_vgg_out)
+        sat_lin_out = nn.functional.normalize(sat_lin_out, p=2, dim=1)
+
+        sat_gan_lin_out = self.sat_gan_linear(sat_gan_vgg_out)
+        sat_gan_lin_out = nn.functional.normalize(sat_gan_lin_out, p=2, dim=1)
+
+        return gr_lin_out, sat_lin_out, sat_gan_lin_out
+
+
+class FeatureFusionNetwork(nn.Module):
+    def __init__(self, device):
+        super(FeatureFusionNetwork, self).__init__()
+
+        # reference https://github.com/kregmi/cross-view-image-matching/blob/master/feature_fusion/src/siamese_fc.py#L25
+        self.linear_sat = nn.Linear(1000, 1000, device=device)
+        self.linear_concat = nn.Linear(2000, 1000, device=device)
+
+    @staticmethod
+    def triplet_loss(output_tuple):
+        sat_lin_out, conc_lin_out = output_tuple
+
+        distance1 = 2 - 2 * (sat_lin_out @ conc_lin_out.T)
+        return SAN.triplet_loss(distance1)
+
+    def forward(self, ground_feats, satellite_feats, synthetic_satellite_feats):
+        """
+        Run a forward pass in the Feature Fusion network.
+        :param ground_feats: The output of the Joint Feature Learning Network for the ground image input.
+        :param satellite_feats: The output of the Joint Feature Learning Network for the satellite image input.
+        :param synthetic_satellite_feats: The output of the Joint Feature Learning Network for the synthetic
+         satellite image input.
+        """
+        ground_conc_gan_sat = torch.concatenate([ground_feats, synthetic_satellite_feats], dim=1)
+        conc_lin_out = self.linear_concat(ground_conc_gan_sat)
+        conc_lin_out = nn.functional.normalize(conc_lin_out, p=2, dim=1)
+
+        sat_lin_out = self.linear_sat(satellite_feats)
+        sat_lin_out = nn.functional.normalize(sat_lin_out, p=2, dim=1)
+
+        return sat_lin_out, conc_lin_out
