@@ -69,10 +69,10 @@ def evaluate(device):
 
     san_model = SAN(input_is_transformed=True, device=device)
     san_model.load_state_dict(
-        torch.load('/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/1716829223265.pt', map_location=device))
+        torch.load('/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/models_san/1716829223265.pt', map_location=device))
     trainer = Trainer(san_model, device=device)
     print('Starting evaluation...')
-    accuracy = trainer.evaluate(validation_dataloader, batch_size)
+    accuracy = trainer.evaluate(validation_dataloader, batch_size, features_output_dim=(16, 4, 64))
     print(f'accuracy: {accuracy:.4f}')
 
 
@@ -184,8 +184,8 @@ def main():
     # vgg_test(device)
     # image_segmentation(device)
 
-    train(device)
-    # evaluate(device)
+    # train(device)
+    evaluate(device)
     # compute_segm_imgs(device)
     # compute_polar_imgs(device)
 

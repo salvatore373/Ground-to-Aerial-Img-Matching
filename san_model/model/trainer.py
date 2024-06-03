@@ -97,11 +97,11 @@ class Trainer:
                 break
             min_val_loss = min(min_val_loss, valid_loss)
 
-    def evaluate(self, test_dataloader: DataLoader, batch_size):
-        # 16, 4, 64
+    def evaluate(self, test_dataloader: DataLoader, batch_size, features_output_dim: tuple,
+                 model_output_filter: callable = None):
         num_samples = batch_size * len(test_dataloader)
-        grd_accumulator = np.zeros([num_samples, 16, 4, 64])
-        sat_accumulator = np.zeros([num_samples, 16, 4, 64])
+        grd_accumulator = np.zeros([num_samples, *features_output_dim])
+        sat_accumulator = np.zeros([num_samples, *features_output_dim])
         accumulator_ind = 0
 
         self.model.eval()
@@ -111,8 +111,12 @@ class Trainer:
                 polar_sat, polar_segm_sat, ground = polar_sat.to(self.device), polar_segm_sat.to(
                     self.device), ground.to(self.device)
 
-                dist_mat_pred, vgg_ground_out, sat_vgg_concat = self.model(ground, polar_sat, polar_segm_sat,
-                                                                           return_features=True)
+                if model_output_filter is None:
+                    dist_mat_pred, vgg_ground_out, sat_vgg_concat = self.model(ground, polar_sat, polar_segm_sat,
+                                                                               return_features=True)
+                if model_output_filter is not None:
+                    model_output = self.model(ground, polar_sat, polar_segm_sat)
+                    dist_mat_pred, vgg_ground_out, sat_vgg_concat = model_output_filter(model_output)
 
                 grd_accumulator[accumulator_ind:accumulator_ind + batch_size, :] = vgg_ground_out
                 sat_accumulator[accumulator_ind:accumulator_ind + batch_size, :] = sat_vgg_concat
