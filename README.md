@@ -22,13 +22,44 @@ In our project, due to limited resources, we used a subset of CVUSA. In particul
 hosting the SAN project](https://pro1944191.github.io/SemanticAlignNet/). 
 
 ## How to run the code
+
+### Pre-operations
+First of all, we have to identify the (global) path that points to the CVUSA dataset to use for training and evaluation,
+and put it in the `dataset_path` variable. Then, put the (global) paths to the CSVs containing the training and
+evaluation triplets in `trainCSV` and `valCSV` respectively. The former will be partitioned in training and validation
+sets, while the former will be used for testing.
+
 ### SAN training/evaluation
+Given `dataset_path`, `trainCSV` and `valCSV` as defined above:
 #### Training
+To train the network you have to call
+
+```train(device, dataset_path, trainCSV)```
+
+(defined in `san_model/main.py`) and the training process will start.
+
 #### Evaluation
+To evaluate the network you have to call
+
+```evaluate(device, dataset_path, trainCSV)```
+
+(defined in `san_model/main.py`) and the model will be evaluated according to the top1Recall metric.
 
 ### GAN-based training/evaluation
+Given `dataset_path`, `trainCSV` and `valCSV` as defined above:
 #### Training
+To train the whole network (both the JointFeatureLearning and the FeatureFusion networks) you have to call
+
+```train_feature_extractor(device, dataset_path, trainCSV)```
+
+(defined in `gen_model/main.py`) and the training process will start.
+
 #### Evaluation
+To evaluate the whole network (both the JointFeatureLearning and the FeatureFusion networks) you have to call
+
+```evaluate_feature_extractor(device, dataset_path, trainCSV)```
+
+(defined in `gen_model/main.py`) and the model will be evaluated according to the top1Recall metric.
 
 
 ## Authors of this project
