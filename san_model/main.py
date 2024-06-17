@@ -15,10 +15,8 @@ from san_model.model.trainer import Trainer
 from san_model.model.transformation import Transformation
 
 
-def train(device):
-    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
-    trainCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"
-
+def train(device, dataset_path="/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/",
+          trainCSV="/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/train-19zl.csv"):
     batch_size = 8
     epochs = 30
 
@@ -26,13 +24,6 @@ def train(device):
                                     dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
                                                      ImageTypes.Ground])
     train_dataset, validation_dataset = torch.utils.data.random_split(full_dataset, [0.9, 0.1])
-
-    # train_dataset = CrossViewDataset(trainCSV, base_path=dataset_path, device=device, normalize_imgs=True,
-    #                                  dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
-    #                                                   ImageTypes.Ground])
-    # validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
-    #                                       dataset_content=[ImageTypes.PolarSat, ImageTypes.PolarSegmentedSat,
-    #                                                        ImageTypes.Ground])
 
     train_sampler = RandomSampler(train_dataset, replacement=False, num_samples=int(0.1 * len(train_dataset)))
     valid_sampler = RandomSampler(validation_dataset, replacement=False,
@@ -54,10 +45,8 @@ def train(device):
                f"/Volumes/SALVATORE R/Università/CV/hw_data/model/{int(time.time() * 1000)}.pt")
 
 
-def evaluate(device):
-    dataset_path = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/"
-    valCSV = "/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"
-
+def evaluate(device, dataset_path="/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/",
+             valCSV="/Volumes/SALVATORE R/Università/CV/hw_data/cvusa/CVUSA_subset/CVUSA_subset/val-19zl.csv"):
     batch_size = 8
 
     validation_dataset = CrossViewDataset(valCSV, base_path=dataset_path, device=device, normalize_imgs=True,
@@ -69,28 +58,17 @@ def evaluate(device):
 
     san_model = SAN(input_is_transformed=True, device=device)
     san_model.load_state_dict(
-        torch.load('/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/models_san/1716829223265.pt', map_location=device))
+        torch.load('/Volumes/SALVATORE R/Università/CV/hw_data/saved_models/models_san/1716829223265.pt',
+                   map_location=device))
     trainer = Trainer(san_model, device=device)
     print('Starting evaluation...')
-    accuracy = trainer.evaluate(validation_dataloader, batch_size, features_output_dim=(16, 4, 64))
-    print(f'accuracy: {accuracy:.4f}')
+    top1Recall = trainer.evaluate(validation_dataloader, batch_size, features_output_dim=(16, 4, 64))
+    print(f'top1Recall: {top1Recall:.4f}')
 
 
 def comp_mean_std_dev(path_to_dir, channels=3):
     saved_imgs_filenames = [f for f in os.listdir(path_to_dir) if f.endswith('.png') and not f.startswith('._')]
     n = len(saved_imgs_filenames)
-    # S1 = torch.zeros(channels)
-    # S2 = torch.zeros(channels)
-    # for ind, filename in enumerate(saved_imgs_filenames):
-    #     img = torchvision.io.read_image(f'{path_to_dir}/{filename}')
-    #     curr_mean = img.mean(dim=(1, 2), dtype=torch.float32)
-    #
-    #     S1 = S1.add(curr_mean)
-    #     S2 = S2.add(curr_mean.pow(2))
-    #     break
-    # # Compute mean and std dev
-    # mean = S1.div(n)
-    # std = torch.sqrt(S2.div(n) - mean.pow(2))
 
     runn_mean = torch.zeros(channels)
     M2 = torch.zeros(channels)
@@ -174,20 +152,12 @@ def compute_segm_imgs(device):
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # print('salvatore')
 
-    # load_data(device)
-    # img_polar2 = polar_tensor(device)
-    # print("Shape of the polarized image: ", img_polar2.shape)
-    # polar(device)
-    # correlation(device)
-    # vgg_test(device)
-    # image_segmentation(device)
-
-    # train(device)
-    evaluate(device)
     # compute_segm_imgs(device)
     # compute_polar_imgs(device)
+
+    train(device)
+    # evaluate(device)
 
 
 if __name__ == '__main__':
